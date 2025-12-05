@@ -56,7 +56,7 @@ void InitDefaultPrefs(void)
 	gGamePrefs.shadows = true;
 	gGamePrefs.dust = true;
 	gGamePrefs.fullscreen = true;
-	gGamePrefs.displayNumMinus1 = 0;
+	gGamePrefs.displayNum = 0;
 	gGamePrefs.antialiasingLevel = 0;
 	gGamePrefs.vsync = true;
 	gGamePrefs.mainMenuHelp = true;

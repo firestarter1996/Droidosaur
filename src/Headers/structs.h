@@ -304,7 +304,7 @@ typedef struct
 	Boolean	dust;
 	Boolean fullscreen;
 	Byte antialiasingLevel;
-	Byte displayNumMinus1;
+	Byte displayNum;
 	Boolean mainMenuHelp;
 	Boolean vsync;
 	Boolean extreme;

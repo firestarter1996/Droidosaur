@@ -65,7 +65,7 @@ static SettingEntry gSettingEntries[] =
 	{&gGamePrefs.fullscreen			, "Fullscreen"			, Callback_Fullscreen,		2,	{ "NO", "YES" }, },
 	{&gGamePrefs.vsync				, "V-Sync"				, Callback_VSync,			2,	{ "NO", "YES" }, },
 	{&gGamePrefs.force4x3			, "Aspect Ratio"		, NULL,						2,	{ "FILL SCREEN", "FORCE 4:3" }, },
-	{&gGamePrefs.displayNumMinus1	, "Preferred Display"	, Callback_Fullscreen,		1,	{ "DEFAULT" }, },
+	{&gGamePrefs.displayNum			, "Preferred Display"	, Callback_Fullscreen,		1,	{ "DEFAULT" }, },
 	{&gGamePrefs.antialiasingLevel	, "Antialiasing"		, Callback_Antialiasing,	4,	{ "NO", "MSAA 2x", "MSAA 4x", "MSAA 8x" }, },
 	{nil							, nil					, nil,						0,  { NULL } },
 	{&gGamePrefs.highQualityTextures, "Texture Filtering"	, nil,						2,	{ "NO", "YES" }, },
@@ -531,7 +531,7 @@ static void InitDisplayPref(void)
 	for (size_t i = 0; i < SDL_arraysize(gSettingEntries); i++)
 	{
 		SettingEntry* entry = &gSettingEntries[i];
-		if (entry->valuePtr == &gGamePrefs.displayNumMinus1)
+		if (entry->valuePtr == &gGamePrefs.displayNum)
 		{
 			entry->numChoices = GetNumDisplays();
 
