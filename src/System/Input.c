@@ -248,15 +248,20 @@ void UpdateInput(void)
 	// --------------------------------------------
 	// Update need states
 
+	bool isTextInputActive = SDL_TextInputActive(gSDLWindow);
+
 	for (int i = 0; i < NUM_CONTROL_NEEDS; i++)
 	{
 		const KeyBinding* kb = &gGamePrefs.keys[i];
 
 		bool downNow = false;
 
-		for (int j = 0; j < KEYBINDING_MAX_KEYS; j++)
-			if (kb->key[j] && kb->key[j] < numkeys)
-				downNow |= gRawKeyboardState[kb->key[j]] & KEYSTATE_ACTIVE_BIT;
+		if (!isTextInputActive)		// Skip keyboard during high score name input
+		{
+			for (int j = 0; j < KEYBINDING_MAX_KEYS; j++)
+				if (kb->key[j] && kb->key[j] < numkeys)
+					downNow |= gRawKeyboardState[kb->key[j]] & KEYSTATE_ACTIVE_BIT;
+		}
 
 		if (kb->mouseButton)
 			downNow |= 0 != (mouseButtons & SDL_BUTTON_MASK(kb->mouseButton));
