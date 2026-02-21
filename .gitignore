@@ -24,4 +24,6 @@ android/.gradle/
 android/app/build/
 android/build/
 android/local.properties
-
+android/app/.cxx/
+# SDL Java bridge files (copied from SDL source during CI; not committed)
+android/app/src/main/java/org/
