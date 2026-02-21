@@ -479,6 +479,18 @@ static GLuint LinkProgram(GLuint vs, GLuint fs)
 
 void GLESBridge_Init(void)
 {
+    // Guard against multiple initialization
+    if (gShaderProgram)
+    {
+        // Already initialized; just reset the matrix stacks and light state
+        MatStack_Init(&gMatMV);
+        MatStack_Init(&gMatProj);
+        MatStack_Init(&gMatTex);
+        gCurrentStack = &gMatMV;
+        gCurrentMode  = 0x1700;
+        return;
+    }
+
     // Initialize matrix stacks
     MatStack_Init(&gMatMV);
     MatStack_Init(&gMatProj);

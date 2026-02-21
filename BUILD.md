@@ -73,3 +73,61 @@ If you want to build the game **manually** instead, the rest of this document de
     ```
     If you'd like to enable runtime sanitizers, append `-DSANITIZE=1` to the **first** `cmake` call above.
 1. The game gets built in `build/Nanosaur`. Enjoy!
+
+## How to build the Android APK
+
+### Prerequisites
+
+- [Android Studio](https://developer.android.com/studio) or the standalone Android SDK/NDK
+- Android NDK r27 or later
+- CMake 3.22+
+- JDK 17
+- Gradle 8.9+
+
+### Steps
+
+1. Clone the repo **recursively**:
+    ```
+    git clone --recurse-submodules https://github.com/LachlanBWWright/Nanosaur-android
+    cd Nanosaur-android
+    ```
+
+1. Clone SDL3 into the `extern/SDL` directory:
+    ```
+    git clone --depth 1 https://github.com/libsdl-org/SDL.git extern/SDL
+    ```
+
+1. Copy the SDL Java bridge files into the Android project:
+    ```
+    mkdir -p android/app/src/main/java/org/libsdl/app
+    cp extern/SDL/android-project/app/src/main/java/org/libsdl/app/*.java \
+       android/app/src/main/java/org/libsdl/app/
+    ```
+
+1. Install the Android SDK, NDK, and CMake via `sdkmanager`:
+    ```
+    sdkmanager "cmake;3.22.1"
+    sdkmanager "ndk;27.2.12479018"
+    ```
+
+1. Generate the Gradle wrapper (if not already present):
+    ```
+    cd android
+    gradle wrapper --gradle-version=8.9
+    ```
+
+1. Build the debug APK:
+    ```
+    cd android
+    ./gradlew assembleDebug
+    ```
+
+1. The APK is at `android/app/build/outputs/apk/debug/app-debug.apk`. Install it with:
+    ```
+    adb install android/app/build/outputs/apk/debug/app-debug.apk
+    ```
+
+### CI/CD
+
+The repository includes a GitHub Actions workflow (`.github/workflows/android-build.yml`) that automatically builds and uploads the debug APK as an artifact on every push and pull request.
+
