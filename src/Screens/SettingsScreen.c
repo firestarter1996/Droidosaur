@@ -21,6 +21,9 @@ static const int kKeybindingRow_Done = NUM_REMAPPABLE_NEEDS + 1;
 
 static bool gShowAntialiasingWarning = false;
 
+// Maximum number of choices per settings entry (used for choices[] array in SettingEntry and
+// for the display name buffer).  Must be a compile-time constant.
+#define MAX_CHOICES 8
 
 enum
 {
