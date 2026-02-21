@@ -226,7 +226,9 @@ void UpdateInput(void)
 
 	int numkeys = 0;
 	const bool* keystate = SDL_GetKeyboardState(&numkeys);
+#ifndef __ANDROID__
 	uint32_t mouseButtons = SDL_GetMouseState(NULL, NULL);
+#endif
 
 	gAnyNewKeysPressed = false;
 

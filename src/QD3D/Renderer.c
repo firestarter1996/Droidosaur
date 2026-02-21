@@ -82,7 +82,9 @@ static int					gMeshQueueSize = 0;
 
 static int DepthSortCompare(void const* a_void, void const* b_void);
 static void DrawMeshList(int renderPass, const MeshQueueEntry* entry);
+#if ALLOW_FADE
 static void DrawFadeOverlay(float opacity);
+#endif
 
 #pragma mark -
 
@@ -1224,6 +1226,7 @@ void Render_DrawBackdrop(bool keepBackdropAspectRatio)
 	Render_Exit2D();
 }
 
+#if ALLOW_FADE
 static void DrawFadeOverlay(float opacity)
 {
 	glViewport(0, 0, gWindowWidth, gWindowHeight);
@@ -1236,6 +1239,7 @@ static void DrawFadeOverlay(float opacity)
 	glDrawElements(GL_TRIANGLES, 3*2, GL_UNSIGNED_BYTE, kFullscreenQuadTriangles);
 	Render_Exit2D();
 }
+#endif
 
 #pragma mark -
 
