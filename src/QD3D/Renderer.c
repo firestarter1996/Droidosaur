@@ -526,6 +526,7 @@ void Render_TexSubImage2D(
 }
 
 
+void Render_Load3DMFTextures(TQ3MetaFile* metaFile, GLuint* outTextureNames)
 {
 	for (int i = 0; i < metaFile->numTextures; i++)
 	{
