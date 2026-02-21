@@ -398,6 +398,7 @@ short		i;
 	} while (!GetSDLKeyState(SDL_SCANCODE_RETURN) && !GetSDLKeyState(SDL_SCANCODE_KP_ENTER)
 #ifdef __ANDROID__
 		   && !GetNewNeedState(kNeed_UIConfirm)
+		   && !(gTextInput[0] == '\n' || gTextInput[0] == '\r')  // Android IME Enter key
 #endif
 	);
 

@@ -411,9 +411,11 @@ GLuint Render_LoadTexture(
 					//   bits [9:5]  = G
 					//   bits [14:10]= R
 					//   bit  [15]   = A (last BGRA component, MSB field with _REV)
-					uint8_t b = (uint8_t)((px & 0x001F) << 3);
-					uint8_t g = (uint8_t)(((px >> 5)  & 0x1F) << 3);
-					uint8_t r = (uint8_t)(((px >> 10) & 0x1F) << 3);
+					// Expand 5-bit to 8-bit: (x<<3)|(x>>2) maps 0->0 and 31->255.
+					uint32_t b5 = (px & 0x001F), g5 = ((px>>5)&0x1F), r5 = ((px>>10)&0x1F);
+					uint8_t b = (uint8_t)((b5 << 3) | (b5 >> 2));
+					uint8_t g = (uint8_t)((g5 << 3) | (g5 >> 2));
+					uint8_t r = (uint8_t)((r5 << 3) | (r5 >> 2));
 					uint8_t a = forceOpaqueAlpha ? 0xFF : ((px >> 15) ? 0xFF : 0x00);
 					converted[i*4+0] = r;
 					converted[i*4+1] = g;
@@ -488,9 +490,11 @@ void Render_TexSubImage2D(
 				for (int i = 0; i < numPixels; i++)
 				{
 					uint16_t px = src[i];
-					uint8_t b = (uint8_t)((px & 0x001F) << 3);
-					uint8_t g = (uint8_t)(((px >> 5)  & 0x1F) << 3);
-					uint8_t r = (uint8_t)(((px >> 10) & 0x1F) << 3);
+					// Expand 5-bit to 8-bit: (x<<3)|(x>>2) maps 0->0 and 31->255.
+					uint32_t b5 = (px & 0x001F), g5 = ((px>>5)&0x1F), r5 = ((px>>10)&0x1F);
+					uint8_t b = (uint8_t)((b5 << 3) | (b5 >> 2));
+					uint8_t g = (uint8_t)((g5 << 3) | (g5 >> 2));
+					uint8_t r = (uint8_t)((r5 << 3) | (r5 >> 2));
 					cvt[i*4+0] = r;
 					cvt[i*4+1] = g;
 					cvt[i*4+2] = b;

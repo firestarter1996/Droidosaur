@@ -21,14 +21,16 @@
 #define JOY_CY_NORM     0.65f
 #define JOY_RADIUS_NORM 0.09f
 
-// Action buttons – right side (diamond layout)
-#define BTN_CX_NORM     0.85f
-#define BTN_CY_NORM     0.68f
-#define BTN_RADIUS_NORM 0.048f
-#define BTN_SPACING     0.075f
+// Action buttons – right side (diamond layout: top=Jump, right=Attack, left=Pickup)
+// BTN_SPACING must satisfy: sqrt(spX^2 + spY^2) > 2*r_px for all screen ratios.
+// With BTN_SPACING=0.115 and BTN_RADIUS_NORM=0.043, diagonal gap is ~250px on 16:9.
+#define BTN_CX_NORM     0.82f
+#define BTN_CY_NORM     0.65f
+#define BTN_RADIUS_NORM 0.043f
+#define BTN_SPACING     0.115f
 
-// Jetpack buttons – below the action diamond
-#define JET_BTN_CY_NORM        0.75f    // absolute normalised Y position
+// Jetpack buttons – clearly below the action diamond to avoid overlap
+#define JET_BTN_CY_NORM        0.83f    // well below diamond (verified no-overlap for 16:9 and 20:9)
 #define JET_BTN_X_OFFSET_SCALE 0.55f    // fraction of BTN_SPACING for X separation
 
 // Weapon cycle buttons – top-center area (small)
@@ -400,6 +402,119 @@ static void DrawCircleOutline(float cx, float cy, float radius, int segs,
     glBindVertexArray(0);
 }
 
+// Draw a filled triangle
+static void DrawTriangle(float x1, float y1, float x2, float y2, float x3, float y3,
+                         float r, float g, float b, float a)
+{
+    EnsureOvlShader();
+    float verts[6] = { x1, y1, x2, y2, x3, y3 };
+    float m[16];
+    MakeOrtho2D(m, (float)gOvlW, (float)gOvlH);
+    glUseProgram(gOvlShader);
+    glUniform4f(gOvlUniColor, r, g, b, a);
+    glUniformMatrix4fv(gOvlUniMatrix, 1, GL_FALSE, m);
+    glBindVertexArray(gOvlVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, gOvlVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STREAM_DRAW);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(0);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glBindVertexArray(0);
+}
+
+// Draw a filled axis-aligned rectangle (lx=left, ty=top, w=width, h=height)
+static void DrawQuad(float lx, float ty, float w, float h,
+                     float r, float g, float b, float a)
+{
+    EnsureOvlShader();
+    float rx = lx + w, by = ty + h;
+    float verts[8] = { lx, ty,  rx, ty,  lx, by,  rx, by };
+    float m[16];
+    MakeOrtho2D(m, (float)gOvlW, (float)gOvlH);
+    glUseProgram(gOvlShader);
+    glUniform4f(gOvlUniColor, r, g, b, a);
+    glUniformMatrix4fv(gOvlUniMatrix, 1, GL_FALSE, m);
+    glBindVertexArray(gOvlVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, gOvlVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STREAM_DRAW);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(0);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    glBindVertexArray(0);
+}
+
+// Draw a recognisable icon inside each button circle.
+// Icon size is ~55% of the button radius so it fits comfortably inside.
+static void DrawButtonIcon(int btn)
+{
+    float cx = gBtnCX[btn];
+    float cy = gBtnCY[btn];
+    float s  = BtnRadius(btn) * 0.55f;  // icon half-size in pixels
+    const float wr = 1.0f, wg = 1.0f, wb = 1.0f, wa = 0.85f;
+
+    switch (btn)
+    {
+        case kTouchBtn_Jump:
+            // Up-pointing arrow: head + shaft
+            DrawTriangle(cx,       cy - s,
+                         cx - s*0.85f, cy + s*0.25f,
+                         cx + s*0.85f, cy + s*0.25f,  wr, wg, wb, wa);
+            DrawQuad(cx - s*0.22f, cy + s*0.1f, s*0.44f, s*0.7f, wr, wg, wb, wa);
+            break;
+
+        case kTouchBtn_Attack:
+            // Cross (+): two overlapping thin quads
+            DrawQuad(cx - s,       cy - s*0.18f, s*2.0f, s*0.36f, wr, wg, wb, wa);
+            DrawQuad(cx - s*0.18f, cy - s,       s*0.36f, s*2.0f, wr, wg, wb, wa);
+            break;
+
+        case kTouchBtn_Pickup:
+            // Down-pointing arrow: head + shaft
+            DrawTriangle(cx,       cy + s,
+                         cx - s*0.85f, cy - s*0.25f,
+                         cx + s*0.85f, cy - s*0.25f,  wr, wg, wb, wa);
+            DrawQuad(cx - s*0.22f, cy - s*0.8f, s*0.44f, s*0.7f, wr, wg, wb, wa);
+            break;
+
+        case kTouchBtn_JetUp:
+            // Flame / rocket: filled upward triangle
+            DrawTriangle(cx,        cy - s*0.9f,
+                         cx - s*0.75f, cy + s*0.6f,
+                         cx + s*0.75f, cy + s*0.6f,  wr, wg, wb, wa);
+            break;
+
+        case kTouchBtn_JetDown:
+            // Downward triangle
+            DrawTriangle(cx,        cy + s*0.9f,
+                         cx - s*0.75f, cy - s*0.6f,
+                         cx + s*0.75f, cy - s*0.6f,  wr, wg, wb, wa);
+            break;
+
+        case kTouchBtn_PrevWeapon:
+            // Left-pointing arrow (◄)
+            DrawTriangle(cx - s*0.8f, cy,
+                         cx + s*0.5f,  cy - s*0.75f,
+                         cx + s*0.5f,  cy + s*0.75f, wr, wg, wb, wa);
+            break;
+
+        case kTouchBtn_NextWeapon:
+            // Right-pointing arrow (►)
+            DrawTriangle(cx + s*0.8f, cy,
+                         cx - s*0.5f,  cy - s*0.75f,
+                         cx - s*0.5f,  cy + s*0.75f, wr, wg, wb, wa);
+            break;
+
+        case kTouchBtn_Pause:
+            // Two vertical bars (||)
+            DrawQuad(cx - s*0.6f, cy - s*0.7f, s*0.35f, s*1.4f, wr, wg, wb, wa);
+            DrawQuad(cx + s*0.25f, cy - s*0.7f, s*0.35f, s*1.4f, wr, wg, wb, wa);
+            break;
+
+        default:
+            break;
+    }
+}
+
 // -------------------------------------------------------------------------
 // Draw
 // -------------------------------------------------------------------------
@@ -480,6 +595,10 @@ void TouchControls_Draw(void)
                           bg * OUTLINE_BRIGHTNESS_SCALE,
                           bb * OUTLINE_BRIGHTNESS_SCALE, 0.55f);
     }
+
+    // Draw icons on top of each button
+    for (int i = 0; i < kTouchBtn_COUNT; i++)
+        DrawButtonIcon(i);
 
     // Restore state
     if (depthTest) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
