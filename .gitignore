@@ -19,3 +19,9 @@ cache/
 # macOS metadata
 .DS_Store
 
+# Android build cache
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+
