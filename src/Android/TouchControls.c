@@ -22,10 +22,23 @@
 #define JOY_RADIUS_NORM 0.09f
 
 // Action buttons – right side (diamond layout)
-#define BTN_CX_NORM     0.82f
-#define BTN_CY_NORM     0.65f
+#define BTN_CX_NORM     0.85f
+#define BTN_CY_NORM     0.68f
 #define BTN_RADIUS_NORM 0.048f
 #define BTN_SPACING     0.075f
+
+// Jetpack buttons – below the action diamond
+#define JET_BTN_CY_NORM        0.75f    // absolute normalised Y position
+#define JET_BTN_X_OFFSET_SCALE 0.55f    // fraction of BTN_SPACING for X separation
+
+// Weapon cycle buttons – top-center area (small)
+#define WPN_BTN_Y_NORM         0.08f
+#define WPN_BTN_LEFT_X_NORM    0.42f
+#define WPN_BTN_RIGHT_X_NORM   0.54f
+#define WPN_BTN_RADIUS_SCALE   0.75f
+
+// Drawing
+#define OUTLINE_BRIGHTNESS_SCALE  1.3f
 
 // Pause button – top-right corner
 #define PAUSE_CX_NORM     0.95f
@@ -72,11 +85,25 @@ static void UpdateButtonPositions(void)
     float cx = NormX(BTN_CX_NORM);
     float cy = NormY(BTN_CY_NORM);
     float sp = NormX(BTN_SPACING);
+    float spY = NormY(BTN_SPACING);
 
-    // Up = Jump, Right = Attack, Left = Pickup
-    gBtnCX[kTouchBtn_Jump]   = cx;         gBtnCY[kTouchBtn_Jump]   = cy - sp;
+    // Main action diamond: Jump (top), Attack (right), Pickup (left)
+    gBtnCX[kTouchBtn_Jump]   = cx;         gBtnCY[kTouchBtn_Jump]   = cy - spY;
     gBtnCX[kTouchBtn_Attack] = cx + sp;    gBtnCY[kTouchBtn_Attack] = cy;
     gBtnCX[kTouchBtn_Pickup] = cx - sp;    gBtnCY[kTouchBtn_Pickup] = cy;
+
+    // Jetpack buttons – flanking below the diamond
+    float jetY = NormY(JET_BTN_CY_NORM);
+    gBtnCX[kTouchBtn_JetUp]   = cx + sp * JET_BTN_X_OFFSET_SCALE;  gBtnCY[kTouchBtn_JetUp]   = jetY;
+    gBtnCX[kTouchBtn_JetDown] = cx - sp * JET_BTN_X_OFFSET_SCALE;  gBtnCY[kTouchBtn_JetDown] = jetY;
+
+    // Weapon cycle buttons – top-centre strip
+    gBtnCX[kTouchBtn_PrevWeapon] = NormX(WPN_BTN_LEFT_X_NORM);
+    gBtnCY[kTouchBtn_PrevWeapon] = NormY(WPN_BTN_Y_NORM);
+    gBtnCX[kTouchBtn_NextWeapon] = NormX(WPN_BTN_RIGHT_X_NORM);
+    gBtnCY[kTouchBtn_NextWeapon] = NormY(WPN_BTN_Y_NORM);
+
+    // Pause button
     gBtnCX[kTouchBtn_Pause]  = NormX(PAUSE_CX_NORM);
     gBtnCY[kTouchBtn_Pause]  = NormY(PAUSE_CY_NORM);
 }
@@ -85,6 +112,8 @@ static float BtnRadius(TouchButtonID btn)
 {
     if (btn == kTouchBtn_Pause)
         return NormX(PAUSE_RADIUS_NORM);
+    if (btn == kTouchBtn_PrevWeapon || btn == kTouchBtn_NextWeapon)
+        return NormX(BTN_RADIUS_NORM * WPN_BTN_RADIUS_SCALE);
     return NormX(BTN_RADIUS_NORM);
 }
 
@@ -386,6 +415,12 @@ void TouchControls_Draw(void)
     }
     UpdateButtonPositions();
 
+    // Force full-window viewport so controls are not clipped to the 3D pane.
+    // The 3D scene sets a restricted glViewport (paneClip) and possibly
+    // glScissor; reset both so the overlay covers the entire screen.
+    glDisable(GL_SCISSOR_TEST);
+    glViewport(0, 0, gOvlW, gOvlH);
+
     // Save/restore some GL state
     GLboolean depthTest, blend, cullFace;
     glGetBooleanv(GL_DEPTH_TEST, &depthTest);
@@ -421,8 +456,29 @@ void TouchControls_Draw(void)
     {
         float r = BtnRadius(i);
         float alpha = gBtnDown[i] ? 0.55f : 0.22f;
-        DrawFilledCircle(gBtnCX[i], gBtnCY[i], r, 20,   0.4f, 0.4f, 0.8f, alpha);
-        DrawCircleOutline(gBtnCX[i], gBtnCY[i], r, 20,  0.6f, 0.6f, 1.0f, 0.55f);
+        // Color-code buttons: action=blue, jet=green, weapon=orange, pause=red
+        float br, bg, bb;
+        if (i == kTouchBtn_Pause)
+        {
+            br = 0.8f; bg = 0.2f; bb = 0.2f;
+        }
+        else if (i == kTouchBtn_JetUp || i == kTouchBtn_JetDown)
+        {
+            br = 0.2f; bg = 0.7f; bb = 0.3f;
+        }
+        else if (i == kTouchBtn_PrevWeapon || i == kTouchBtn_NextWeapon)
+        {
+            br = 0.8f; bg = 0.5f; bb = 0.1f;
+        }
+        else
+        {
+            br = 0.4f; bg = 0.4f; bb = 0.8f;
+        }
+        DrawFilledCircle(gBtnCX[i], gBtnCY[i], r, 20,   br, bg, bb, alpha);
+        DrawCircleOutline(gBtnCX[i], gBtnCY[i], r, 20,
+                          br * OUTLINE_BRIGHTNESS_SCALE,
+                          bg * OUTLINE_BRIGHTNESS_SCALE,
+                          bb * OUTLINE_BRIGHTNESS_SCALE, 0.55f);
     }
 
     // Restore state

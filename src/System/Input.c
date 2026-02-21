@@ -318,15 +318,19 @@ void UpdateInput(void)
 				case kNeed_Backward:   downNow |= (joyY < -0.2f); break;
 				case kNeed_TurnLeft:   downNow |= (joyX < -0.2f); break;
 				case kNeed_TurnRight:  downNow |= (joyX >  0.2f); break;
-				case kNeed_Jump:       downNow |= TouchControls_IsButtonDown(kTouchBtn_Jump);   break;
-				case kNeed_Attack:     downNow |= TouchControls_IsButtonDown(kTouchBtn_Attack); break;
-				case kNeed_PickUp:     downNow |= TouchControls_IsButtonDown(kTouchBtn_Pickup); break;
-				case kNeed_UIPause:    downNow |= TouchControls_IsButtonDown(kTouchBtn_Pause);  break;
+				case kNeed_Jump:       downNow |= TouchControls_IsButtonDown(kTouchBtn_Jump);        break;
+				case kNeed_Attack:     downNow |= TouchControls_IsButtonDown(kTouchBtn_Attack);      break;
+				case kNeed_PickUp:     downNow |= TouchControls_IsButtonDown(kTouchBtn_Pickup);      break;
+				case kNeed_JetUp:      downNow |= TouchControls_IsButtonDown(kTouchBtn_JetUp);       break;
+				case kNeed_JetDown:    downNow |= TouchControls_IsButtonDown(kTouchBtn_JetDown);     break;
+				case kNeed_PrevWeapon: downNow |= TouchControls_IsButtonDown(kTouchBtn_PrevWeapon);  break;
+				case kNeed_NextWeapon: downNow |= TouchControls_IsButtonDown(kTouchBtn_NextWeapon);  break;
+				case kNeed_UIPause:    downNow |= TouchControls_IsButtonDown(kTouchBtn_Pause);       break;
 				case kNeed_UIUp:       downNow |= (joyY >  0.2f); break;
 				case kNeed_UIDown:     downNow |= (joyY < -0.2f); break;
 				case kNeed_UILeft:     downNow |= (joyX < -0.2f); break;
 				case kNeed_UIRight:    downNow |= (joyX >  0.2f); break;
-				case kNeed_UIConfirm:  downNow |= TouchControls_IsButtonDown(kTouchBtn_Attack); break;
+				case kNeed_UIConfirm:  downNow |= TouchControls_IsButtonDown(kTouchBtn_Attack);      break;
 				default: break;
 			}
 		}

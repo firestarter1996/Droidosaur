@@ -395,7 +395,11 @@ short		i;
 				/* DRAW SCENE */
 				
 		QD3D_DrawScene(gGameViewInfoPtr,DrawObjects);	
-	} while (!GetSDLKeyState(SDL_SCANCODE_RETURN) && !GetSDLKeyState(SDL_SCANCODE_KP_ENTER));
+	} while (!GetSDLKeyState(SDL_SCANCODE_RETURN) && !GetSDLKeyState(SDL_SCANCODE_KP_ENTER)
+#ifdef __ANDROID__
+		   && !GetNewNeedState(kNeed_UIConfirm)
+#endif
+	);
 
 			/* CLEANUP */
 

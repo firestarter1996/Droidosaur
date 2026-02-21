@@ -14,10 +14,14 @@ extern "C" {
 // Button IDs for touch controls
 typedef enum
 {
-    kTouchBtn_Jump     = 0,
-    kTouchBtn_Attack   = 1,
-    kTouchBtn_Pickup   = 2,
-    kTouchBtn_Pause    = 3,
+    kTouchBtn_Jump       = 0,
+    kTouchBtn_Attack     = 1,
+    kTouchBtn_Pickup     = 2,
+    kTouchBtn_Pause      = 3,
+    kTouchBtn_JetUp      = 4,
+    kTouchBtn_JetDown    = 5,
+    kTouchBtn_PrevWeapon = 6,
+    kTouchBtn_NextWeapon = 7,
     kTouchBtn_COUNT
 } TouchButtonID;
 
