@@ -8,7 +8,9 @@
 
 #ifndef __ANDROID__
 #include <SDL3/SDL_opengl.h>
-#else
+#endif
+
+#ifdef __ANDROID__
 #include "TouchControls.h"
 #endif
 
