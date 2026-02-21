@@ -426,7 +426,7 @@ GLuint Render_LoadTexture(
 		pixels      = converted;
 		bufferFormat = GL_RGBA;
 		bufferType   = GL_UNSIGNED_BYTE;
-		internalFormat = (internalFormat == GL_RGB) ? GL_RGB : GL_RGBA;
+		internalFormat = GL_RGBA;	// GLES3: internalFormat must equal format (GL_RGBA)
 	}
 #endif
 

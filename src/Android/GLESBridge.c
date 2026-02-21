@@ -1074,7 +1074,12 @@ static int UploadClientArrays(int numVerts)
         if (vp)
         {
             const float *v = (const float *)(vp + i * vs);
-            out[0] = v[0]; out[1] = v[1]; out[2] = v[2];
+            out[0] = v[0];
+            out[1] = v[1];
+            // If vertex size is 2 (e.g., glVertexPointer(2, ...) for 2D overlays),
+            // reading v[2] goes past the array end and produces garbage Z values
+            // that cause near-plane clipping.  Use z=0.0 for 2D vertices.
+            out[2] = (gVertexArray.size >= 3) ? v[2] : 0.0f;
         }
         else { out[0] = out[1] = out[2] = 0; }
 
