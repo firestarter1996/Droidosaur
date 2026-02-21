@@ -262,9 +262,11 @@ int main(int argc, char** argv)
 	{
 		// no-op, the game may throw this exception to shut us down cleanly
 	}
-#if !(_DEBUG)
-	// In release builds, catch anything that might be thrown by GameMain
-	// so we can show an error dialog to the user.
+#if !(_DEBUG) || defined(__ANDROID__)
+	// In release builds (and all Android builds), catch anything that might
+	// be thrown by GameMain so we can show an error dialog to the user.
+	// On Android, assembleDebug defines _DEBUG, but we still want to catch
+	// exceptions rather than propagating them as std::terminate() to SDL's Java layer.
 	catch (std::exception& ex)		// Last-resort catch
 	{
 		success = false;

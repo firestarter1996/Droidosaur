@@ -10,9 +10,9 @@
 /****************************/
 
 #include "game.h"
-
-
-/****************************/
+#ifdef __ANDROID__
+#include "TouchControls.h"
+#endif
 /*    PROTOTYPES            */
 /****************************/
 
@@ -408,6 +408,9 @@ static void Slideshow(const struct SlideshowEntry* slides)
 			Render_StartFrame();
 			Render_DrawBackdrop(true);
 			Render_EndFrame();
+#ifdef __ANDROID__
+			TouchControls_Draw();
+#endif
 			SDL_GL_SwapWindow(gSDLWindow);
 
 			if (gamma < 100)

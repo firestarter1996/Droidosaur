@@ -1,6 +1,7 @@
 #include "game.h"
-
-#define MAX_CHOICES 16
+#ifdef __ANDROID__
+#include "TouchControls.h"
+#endif
 
 static const uint32_t kBGColor		= 0x000000;
 static const uint32_t kFGColor		= 0xa0a0a0;
@@ -628,6 +629,9 @@ void DoSettingsScreen(void)
 		Render_StartFrame();
 		Render_DrawBackdrop(true);
 		Render_EndFrame();
+#ifdef __ANDROID__
+		TouchControls_Draw();
+#endif
 
 		SDL_GL_SwapWindow(gSDLWindow);
 	}

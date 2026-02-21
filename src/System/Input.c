@@ -282,7 +282,11 @@ void UpdateInput(void)
 		}
 
 		if (kb->mouseButton)
+#ifdef __ANDROID__
+			; // Skip mouse button bindings on Android - touch controls replace them
+#else
 			downNow |= 0 != (mouseButtons & SDL_BUTTON_MASK(kb->mouseButton));
+#endif
 
 		if ((kb->mouseWheelDelta > 0 && mouseWheelDelta > 0) || (kb->mouseWheelDelta < 0 && mouseWheelDelta < 0))
 			downNow |= true;
@@ -300,6 +304,31 @@ void UpdateInput(void)
 						|| (kb->gamepadAxisSign < 0 && rawValue < (int16_t)(JOYSTICK_FAKEDIGITAL_DEAD_ZONE * -32768.0f));
 			}
 		}
+
+#ifdef __ANDROID__
+		// Map touch controls to game needs
+		{
+			float joyX = TouchControls_GetJoystickX();
+			float joyY = TouchControls_GetJoystickY();
+			switch (i)
+			{
+				case kNeed_Forward:    downNow |= (joyY >  0.2f); break;
+				case kNeed_Backward:   downNow |= (joyY < -0.2f); break;
+				case kNeed_TurnLeft:   downNow |= (joyX < -0.2f); break;
+				case kNeed_TurnRight:  downNow |= (joyX >  0.2f); break;
+				case kNeed_Jump:       downNow |= TouchControls_IsButtonDown(kTouchBtn_Jump);   break;
+				case kNeed_Attack:     downNow |= TouchControls_IsButtonDown(kTouchBtn_Attack); break;
+				case kNeed_PickUp:     downNow |= TouchControls_IsButtonDown(kTouchBtn_Pickup); break;
+				case kNeed_UIPause:    downNow |= TouchControls_IsButtonDown(kTouchBtn_Pause);  break;
+				case kNeed_UIUp:       downNow |= (joyY >  0.2f); break;
+				case kNeed_UIDown:     downNow |= (joyY < -0.2f); break;
+				case kNeed_UILeft:     downNow |= (joyX < -0.2f); break;
+				case kNeed_UIRight:    downNow |= (joyX >  0.2f); break;
+				case kNeed_UIConfirm:  downNow |= TouchControls_IsButtonDown(kTouchBtn_Attack); break;
+				default: break;
+			}
+		}
+#endif
 
 		UpdateKeyState(&gNeedStates[i], downNow);
 	}
