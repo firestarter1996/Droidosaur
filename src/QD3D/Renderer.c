@@ -362,6 +362,11 @@ GLuint Render_LoadTexture(
 	uint8_t *converted = NULL;
 	if (bufferFormat == GL_BGRA || bufferFormat == 0x80E1 /* GL_BGRA */)
 	{
+		// If the original internalFormat is GL_RGB (no alpha channel), the
+		// Mac 1555 format stores 0 in bit 15 as a padding bit.  We must force
+		// A=0xFF for those pixels, otherwise GL_ALPHA_TEST discards every pixel.
+		bool forceOpaqueAlpha = (internalFormat == GL_RGB);
+
 		int numPixels = width * height;
 		converted = (uint8_t *)SDL_malloc((size_t)(numPixels * 4));
 		if (converted)
@@ -376,7 +381,7 @@ GLuint Render_LoadTexture(
 					converted[i*4+0] = src[i*4+1]; // R
 					converted[i*4+1] = src[i*4+2]; // G
 					converted[i*4+2] = src[i*4+3]; // B
-					converted[i*4+3] = src[i*4+0]; // A
+					converted[i*4+3] = forceOpaqueAlpha ? 0xFF : src[i*4+0]; // A
 				}
 			}
 			else if (bufferType == GL_UNSIGNED_INT_8_8_8_8_REV || bufferType == 0x8367)
@@ -389,21 +394,27 @@ GLuint Render_LoadTexture(
 					converted[i*4+0] = src[i*4+1]; // R
 					converted[i*4+1] = src[i*4+2]; // G
 					converted[i*4+2] = src[i*4+3]; // B
-					converted[i*4+3] = src[i*4+0]; // A
+					converted[i*4+3] = forceOpaqueAlpha ? 0xFF : src[i*4+0]; // A
 				}
 			}
 			else if (bufferType == GL_UNSIGNED_SHORT_1_5_5_5_REV || bufferType == 0x8366)
 			{
-				// Input: ARGB1555 little-endian (1A 5R 5G 5B packed into 16 bits)
+				// Input: A1R5G5B5 packed into 16 bits (with GL_BGRA + GL_UNSIGNED_SHORT_1_5_5_5_REV).
+				// For kQ3PixelTypeRGB16 textures (internalFormat=GL_RGB), bit 15 is a padding
+				// zero, not an alpha bit.  Force A=0xFF so GL_ALPHA_TEST does not discard pixels.
 				const uint16_t *src = (const uint16_t *)pixels;
 				for (int i = 0; i < numPixels; i++)
 				{
 					uint16_t px = src[i];
-					// 1_5_5_5_REV: bits [14:10]=R [9:5]=G [4:0]=B [15]=A
+					// With GL_BGRA + GL_UNSIGNED_SHORT_1_5_5_5_REV:
+					//   bits [4:0]  = B (first BGRA component, LSB field with _REV)
+					//   bits [9:5]  = G
+					//   bits [14:10]= R
+					//   bit  [15]   = A (last BGRA component, MSB field with _REV)
 					uint8_t b = (uint8_t)((px & 0x001F) << 3);
 					uint8_t g = (uint8_t)(((px >> 5)  & 0x1F) << 3);
 					uint8_t r = (uint8_t)(((px >> 10) & 0x1F) << 3);
-					uint8_t a = (uint8_t)((px >> 15) ? 0xFF : 0x00);
+					uint8_t a = forceOpaqueAlpha ? 0xFF : ((px >> 15) ? 0xFF : 0x00);
 					converted[i*4+0] = r;
 					converted[i*4+1] = g;
 					converted[i*4+2] = b;
@@ -419,7 +430,7 @@ GLuint Render_LoadTexture(
 					converted[i*4+0] = src[i*4+2];
 					converted[i*4+1] = src[i*4+1];
 					converted[i*4+2] = src[i*4+0];
-					converted[i*4+3] = src[i*4+3];
+					converted[i*4+3] = forceOpaqueAlpha ? 0xFF : src[i*4+3];
 				}
 			}
 		}
@@ -471,6 +482,8 @@ void Render_TexSubImage2D(
 		{
 			if (bufferType == GL_UNSIGNED_SHORT_1_5_5_5_REV || bufferType == 0x8366)
 			{
+				// Terrain tiles use GL_RGB (opaque) -- bit 15 is a Mac padding bit (=0),
+				// not an alpha bit.  Force A=0xFF so GL_ALPHA_TEST keeps all pixels.
 				const uint16_t *src = (const uint16_t *)pixels;
 				for (int i = 0; i < numPixels; i++)
 				{
@@ -478,11 +491,10 @@ void Render_TexSubImage2D(
 					uint8_t b = (uint8_t)((px & 0x001F) << 3);
 					uint8_t g = (uint8_t)(((px >> 5)  & 0x1F) << 3);
 					uint8_t r = (uint8_t)(((px >> 10) & 0x1F) << 3);
-					uint8_t a = (uint8_t)((px >> 15) ? 0xFF : 0x00);
 					cvt[i*4+0] = r;
 					cvt[i*4+1] = g;
 					cvt[i*4+2] = b;
-					cvt[i*4+3] = a;
+					cvt[i*4+3] = 0xFF; // always opaque for RGB16 terrain tiles
 				}
 			}
 			else if (bufferType == GL_UNSIGNED_INT_8_8_8_8 || bufferType == 0x8035)

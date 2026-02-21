@@ -8,6 +8,8 @@
 
     <application
         android:label="Nanosaur"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:hasCode="true"
         android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
 

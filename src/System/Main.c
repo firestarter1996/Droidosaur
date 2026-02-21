@@ -127,17 +127,21 @@ TQ3ColorRGB		c2 = { 1, .9, .6 };
 
 	QD3D_NewViewDef(&viewDef);
 	
-#if TWO_MEG_VERSION
+#if TWO_MEG_VERSION && !defined(__ANDROID__)
 	viewDef.view.paneClip.left 		+= 144;  
 	viewDef.view.paneClip.right 	+= 32;  
 	viewDef.view.paneClip.top		+= 40;  
 	viewDef.view.paneClip.bottom 	+= 140;  
 	viewDef.lights.ambientBrightness = 0.3;
-#else	
+#elif !defined(__ANDROID__)
 	viewDef.view.paneClip.left 		+= 118;  
 	viewDef.view.paneClip.right 	+= 12;  
 	viewDef.view.paneClip.top		+= 9;  
 	viewDef.view.paneClip.bottom 	+= 110;  
+	viewDef.lights.ambientBrightness = 0.2;
+#else
+	// On Android the HUD draws as a backdrop overlay; the 3D viewport fills
+	// the entire screen so that the touch controls are positioned correctly.
 	viewDef.lights.ambientBrightness = 0.2;
 #endif	
 	viewDef.camera.hither 			= HITHER_DISTANCE;
