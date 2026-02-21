@@ -8,9 +8,16 @@
 /****************************/
 
 #include <SDL3/SDL.h>
+#ifdef __ANDROID__
+#include <stdint.h>
+#include "gles_compat.h"
+#include "GLESBridge.h"
+#include "TouchControls.h"
+#else
 #include <SDL3/SDL_opengl.h>
 #if !OSXPPC
 #include <SDL3/SDL_opengl_glext.h>
+#endif
 #endif
 #include "game.h"
 
@@ -241,6 +248,11 @@ void Render_SetDefaultModifiers(RenderModifiers* dest)
 
 void Render_InitState(void)
 {
+#ifdef __ANDROID__
+	// Initialize the GLES3 fixed-function emulation bridge before any GL calls.
+	GLESBridge_Init();
+#endif
+
 	SetInitialClientState(GL_VERTEX_ARRAY,				true);
 	SetInitialClientState(GL_NORMAL_ARRAY,				true);
 	SetInitialClientState(GL_COLOR_ARRAY,				false);
@@ -342,6 +354,78 @@ GLuint Render_LoadTexture(
 	if (flags & kRendererTextureFlags_ClampV)
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
+#ifdef __ANDROID__
+	// GLES3 does not support GL_BGRA, GL_UNSIGNED_INT_8_8_8_8, or
+	// GL_UNSIGNED_SHORT_1_5_5_5_REV.  Convert to GL_RGBA / GL_UNSIGNED_BYTE.
+	uint8_t *converted = NULL;
+	if (bufferFormat == GL_BGRA || bufferFormat == 0x80E1 /* GL_BGRA */)
+	{
+		int numPixels = width * height;
+		converted = (uint8_t *)SDL_malloc((size_t)(numPixels * 4));
+		if (converted)
+		{
+			if (bufferType == GL_UNSIGNED_INT_8_8_8_8 || bufferType == 0x8035)
+			{
+				// Input: BGRA packed as 32-bit big-endian (B=byte0, G=byte1, R=byte2, A=byte3)
+				const uint8_t *src = (const uint8_t *)pixels;
+				for (int i = 0; i < numPixels; i++)
+				{
+					converted[i*4+0] = src[i*4+2]; // R <- B slot (B is byte0, stored at R position in little-endian)
+					converted[i*4+1] = src[i*4+1]; // G
+					converted[i*4+2] = src[i*4+0]; // B <- R slot
+					converted[i*4+3] = src[i*4+3]; // A
+				}
+			}
+			else if (bufferType == GL_UNSIGNED_INT_8_8_8_8_REV || bufferType == 0x8367)
+			{
+				// Input: BGRA packed as 32-bit little-endian (A=byte0, R=byte1, G=byte2, B=byte3)
+				const uint8_t *src = (const uint8_t *)pixels;
+				for (int i = 0; i < numPixels; i++)
+				{
+					converted[i*4+0] = src[i*4+1]; // R
+					converted[i*4+1] = src[i*4+2]; // G
+					converted[i*4+2] = src[i*4+3]; // B
+					converted[i*4+3] = src[i*4+0]; // A
+				}
+			}
+			else if (bufferType == GL_UNSIGNED_SHORT_1_5_5_5_REV || bufferType == 0x8366)
+			{
+				// Input: ARGB1555 little-endian (1A 5R 5G 5B packed into 16 bits)
+				const uint16_t *src = (const uint16_t *)pixels;
+				for (int i = 0; i < numPixels; i++)
+				{
+					uint16_t px = src[i];
+					// 1_5_5_5_REV: bits [14:10]=R [9:5]=G [4:0]=B [15]=A
+					uint8_t b = (uint8_t)((px & 0x001F) << 3);
+					uint8_t g = (uint8_t)(((px >> 5)  & 0x1F) << 3);
+					uint8_t r = (uint8_t)(((px >> 10) & 0x1F) << 3);
+					uint8_t a = (uint8_t)((px >> 15) ? 0xFF : 0x00);
+					converted[i*4+0] = r;
+					converted[i*4+1] = g;
+					converted[i*4+2] = b;
+					converted[i*4+3] = a;
+				}
+			}
+			else
+			{
+				// Unknown BGRA sub-type; just swap R<->B bytes
+				const uint8_t *src = (const uint8_t *)pixels;
+				for (int i = 0; i < numPixels; i++)
+				{
+					converted[i*4+0] = src[i*4+2];
+					converted[i*4+1] = src[i*4+1];
+					converted[i*4+2] = src[i*4+0];
+					converted[i*4+3] = src[i*4+3];
+				}
+			}
+		}
+		pixels      = converted;
+		bufferFormat = GL_RGBA;
+		bufferType   = GL_UNSIGNED_BYTE;
+		internalFormat = (internalFormat == GL_RGB) ? GL_RGB : GL_RGBA;
+	}
+#endif
+
 	glTexImage2D(
 			GL_TEXTURE_2D,
 			0,						// mipmap level
@@ -354,10 +438,94 @@ GLuint Render_LoadTexture(
 			pixels);				// pointer to the actual texture pixels
 	CHECK_GL_ERROR();
 
+#ifdef __ANDROID__
+	if (converted)
+		SDL_free(converted);
+#endif
+
 	return textureName;
 }
 
-void Render_Load3DMFTextures(TQ3MetaFile* metaFile, GLuint* outTextureNames)
+void Render_TexSubImage2D(
+		GLenum target,
+		GLint level,
+		GLint xoffset,
+		GLint yoffset,
+		GLsizei width,
+		GLsizei height,
+		GLenum bufferFormat,
+		GLenum bufferType,
+		const GLvoid* pixels)
+{
+#ifdef __ANDROID__
+	// GLES3 does not support GL_BGRA; convert to GL_RGBA / GL_UNSIGNED_BYTE.
+	if (bufferFormat == GL_BGRA || bufferFormat == 0x80E1 /* GL_BGRA_EXT */)
+	{
+		int numPixels = width * height;
+		uint8_t *cvt = (uint8_t *)SDL_malloc((size_t)(numPixels * 4));
+		if (cvt)
+		{
+			if (bufferType == GL_UNSIGNED_SHORT_1_5_5_5_REV || bufferType == 0x8366)
+			{
+				const uint16_t *src = (const uint16_t *)pixels;
+				for (int i = 0; i < numPixels; i++)
+				{
+					uint16_t px = src[i];
+					uint8_t b = (uint8_t)((px & 0x001F) << 3);
+					uint8_t g = (uint8_t)(((px >> 5)  & 0x1F) << 3);
+					uint8_t r = (uint8_t)(((px >> 10) & 0x1F) << 3);
+					uint8_t a = (uint8_t)((px >> 15) ? 0xFF : 0x00);
+					cvt[i*4+0] = r;
+					cvt[i*4+1] = g;
+					cvt[i*4+2] = b;
+					cvt[i*4+3] = a;
+				}
+			}
+			else if (bufferType == GL_UNSIGNED_INT_8_8_8_8 || bufferType == 0x8035)
+			{
+				const uint8_t *src = (const uint8_t *)pixels;
+				for (int i = 0; i < numPixels; i++)
+				{
+					cvt[i*4+0] = src[i*4+2];
+					cvt[i*4+1] = src[i*4+1];
+					cvt[i*4+2] = src[i*4+0];
+					cvt[i*4+3] = src[i*4+3];
+				}
+			}
+			else if (bufferType == GL_UNSIGNED_INT_8_8_8_8_REV || bufferType == 0x8367)
+			{
+				const uint8_t *src = (const uint8_t *)pixels;
+				for (int i = 0; i < numPixels; i++)
+				{
+					cvt[i*4+0] = src[i*4+1];
+					cvt[i*4+1] = src[i*4+2];
+					cvt[i*4+2] = src[i*4+3];
+					cvt[i*4+3] = src[i*4+0];
+				}
+			}
+			else
+			{
+				const uint8_t *src = (const uint8_t *)pixels;
+				for (int i = 0; i < numPixels; i++)
+				{
+					cvt[i*4+0] = src[i*4+2];
+					cvt[i*4+1] = src[i*4+1];
+					cvt[i*4+2] = src[i*4+0];
+					cvt[i*4+3] = src[i*4+3];
+				}
+			}
+			glTexSubImage2D(target, level, xoffset, yoffset, width, height,
+					GL_RGBA, GL_UNSIGNED_BYTE, cvt);
+			SDL_free(cvt);
+			return;
+		}
+	}
+#endif
+	glTexSubImage2D(target, level, xoffset, yoffset, width, height,
+			bufferFormat, bufferType, pixels);
+}
+
+
 {
 	for (int i = 0; i < metaFile->numTextures; i++)
 	{
@@ -966,8 +1134,60 @@ void Render_DrawBackdrop(bool keepBackdropAspectRatio)
 #endif
 
 		// Set unpack row length to 640
+#ifndef __ANDROID__
 		GLint pUnpackRowLength;
 		glGetIntegerv(GL_UNPACK_ROW_LENGTH, &pUnpackRowLength);
+#endif
+
+#ifdef __ANDROID__
+		// GLES3 does not support GL_BGRA + GL_UNSIGNED_INT_8_8_8_8.
+		// Convert the damage rectangle to GL_RGBA / GL_UNSIGNED_BYTE.
+		int dmgW = damageRect.right  - damageRect.left;
+		int dmgH = damageRect.bottom - damageRect.top;
+		uint8_t *cvt = (uint8_t *)SDL_malloc((size_t)(dmgW * dmgH * 4));
+		if (cvt)
+		{
+			const UInt32 *srcRow = gBackdropPixels + damageRect.top * gBackdropWidth + damageRect.left;
+			for (int row = 0; row < dmgH; row++)
+			{
+				for (int col = 0; col < dmgW; col++)
+				{
+					uint32_t px = srcRow[col];
+#if !(__BIG_ENDIAN__)
+					// GL_UNSIGNED_INT_8_8_8_8 little-endian: byte order = B G R A in memory
+					uint8_t b = (uint8_t)( px        & 0xFF);
+					uint8_t g = (uint8_t)((px >>  8) & 0xFF);
+					uint8_t r = (uint8_t)((px >> 16) & 0xFF);
+					uint8_t a = (uint8_t)((px >> 24) & 0xFF);
+#else
+					// GL_UNSIGNED_INT_8_8_8_8_REV big-endian: byte order = A R G B in memory
+					uint8_t a = (uint8_t)( px        & 0xFF);
+					uint8_t b = (uint8_t)((px >>  8) & 0xFF);
+					uint8_t g = (uint8_t)((px >> 16) & 0xFF);
+					uint8_t r = (uint8_t)((px >> 24) & 0xFF);
+#endif
+					int idx = (row * dmgW + col) * 4;
+					cvt[idx+0] = r;
+					cvt[idx+1] = g;
+					cvt[idx+2] = b;
+					cvt[idx+3] = a;
+				}
+				srcRow += gBackdropWidth;
+			}
+		}
+		glTexSubImage2D(
+				GL_TEXTURE_2D,
+				0,
+				damageRect.left,
+				damageRect.top,
+				dmgW,
+				dmgH,
+				GL_RGBA,
+				GL_UNSIGNED_BYTE,
+				cvt);
+		CHECK_GL_ERROR();
+		if (cvt) SDL_free(cvt);
+#else
 		glPixelStorei(GL_UNPACK_ROW_LENGTH, gBackdropWidth);
 
 		glTexSubImage2D(
@@ -988,6 +1208,7 @@ void Render_DrawBackdrop(bool keepBackdropAspectRatio)
 
 		// Restore unpack row length
 		glPixelStorei(GL_UNPACK_ROW_LENGTH, pUnpackRowLength);
+#endif
 
 		ClearPortDamage();
 	}
@@ -1041,6 +1262,9 @@ void Render_FreezeFrameFadeOut(void)
 			Render_StartFrame();
 			Render_DrawBackdrop(true);
 			Render_EndFrame();
+#ifdef __ANDROID__
+			TouchControls_Draw();
+#endif
 			SDL_GL_SwapWindow(gSDLWindow);
 		}
 		else if (gTerrainPtr)

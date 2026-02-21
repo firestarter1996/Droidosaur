@@ -11,6 +11,9 @@
 /***************/
 
 #include "game.h"
+#ifdef __ANDROID__
+#include "TouchControls.h"
+#endif
 
 
 /**********************/
@@ -149,6 +152,21 @@ void UpdateInput(void)
 	SDL_Event event;
 	while (SDL_PollEvent(&event))
 	{
+#ifdef __ANDROID__
+		// Let the touch controls system handle finger events first.
+		// Finger events that map to touch controls should not fall through
+		// to SDL's touch-mouse emulation.
+		if (TouchControls_ProcessEvent(&event))
+			continue;
+		// Block touch-synthesised mouse events so they don't trigger
+		// mouse-button bindings (which are meaningless on Android).
+		if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN ||
+			event.type == SDL_EVENT_MOUSE_BUTTON_UP)
+		{
+			if (event.button.which == SDL_TOUCH_MOUSEID)
+				continue;
+		}
+#endif
 		switch (event.type)
 		{
 			case SDL_EVENT_QUIT:

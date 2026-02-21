@@ -22,6 +22,12 @@ project(${GAME_TARGET}
 option(BUILD_SDL_FROM_SOURCE "Build SDL from source" OFF)
 option(SDL_STATIC "Static link SDL" OFF)
 
+if(ANDROID)
+	# Android always builds SDL from source
+	set(BUILD_SDL_FROM_SOURCE ON CACHE BOOL "Build SDL from source for Android" FORCE)
+	set(SDL_STATIC OFF CACHE BOOL "Use shared SDL on Android" FORCE)
+endif()
+
 option(SANITIZE "Build with asan/ubsan" OFF)
 
 if(WIN32 OR APPLE)
@@ -82,11 +88,16 @@ if(NOT BUILD_SDL_FROM_SOURCE)
 	find_package(SDL3 CONFIG REQUIRED)
 	message("Found pre-built SDL3")
 else()
-	if(NOT DEFINED SDL3_DIR)
-		set(SDL3_DIR "${CMAKE_SOURCE_DIR}/extern/SDL")
+	set(_sdl3_src "${CMAKE_SOURCE_DIR}/extern/SDL")
+	if(DEFINED SDL3_DIR AND EXISTS "${SDL3_DIR}/CMakeLists.txt")
+		set(_sdl3_src "${SDL3_DIR}")
 	endif()
-	message("Building SDL3 from source: " ${SDL3_DIR})
-	add_subdirectory("${SDL3_DIR}" EXCLUDE_FROM_ALL)
+	set(_sdl3_bin "${CMAKE_BINARY_DIR}/extern/SDL")
+	message("Building SDL3 from source: " ${_sdl3_src})
+	add_subdirectory("${_sdl3_src}" "${_sdl3_bin}" EXCLUDE_FROM_ALL)
+	# SDL3Config.cmake is generated in the binary dir; point SDL3_DIR there so
+	# downstream find_package(SDL3) calls (e.g. from Pomme) can find it.
+	set(SDL3_DIR "${_sdl3_bin}" CACHE PATH "SDL3 build dir" FORCE)
 endif()
 
 #------------------------------------------------------------------------------
@@ -95,7 +106,9 @@ endif()
 
 add_subdirectory(extern/Pomme)
 
-find_package(OpenGL REQUIRED)
+if(NOT ANDROID)
+	find_package(OpenGL REQUIRED)
+endif()
 
 #------------------------------------------------------------------------------
 # EXECUTABLE TARGET
@@ -119,9 +132,20 @@ elseif(APPLE)
 	set_source_files_properties(${CMAKE_SOURCE_DIR}/packaging/${GAME_TARGET}.icns PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
 endif()
 
-add_executable(${GAME_TARGET} ${GAME_SOURCES})
+if(ANDROID)
+	# Android requires a shared library loaded by SDL's Java layer
+	# SDL3's SDLActivity.java looks for "libmain.so" by default
+	add_library(main SHARED ${GAME_SOURCES})
+	set(GAME_TARGET_OBJ main)
+else()
+	add_executable(${GAME_TARGET} ${GAME_SOURCES})
+	set(GAME_TARGET_OBJ ${GAME_TARGET})
+endif()
 
-target_include_directories(${GAME_TARGET} PRIVATE ${GAME_SRCDIR}/Headers)
+target_include_directories(${GAME_TARGET_OBJ} PRIVATE ${GAME_SRCDIR}/Headers)
+if(ANDROID)
+	target_include_directories(${GAME_TARGET_OBJ} PRIVATE ${GAME_SRCDIR}/Android)
+endif()
 
 #------------------------------------------------------------------------------
 # COMPILER/LINKER OPTIONS
@@ -131,11 +155,11 @@ add_compile_definitions(
 	"$<$<CONFIG:DEBUG>:_DEBUG>"
 )
 
-target_compile_definitions(${GAME_TARGET} PRIVATE
+target_compile_definitions(${GAME_TARGET_OBJ} PRIVATE
 	GL_SILENCE_DEPRECATION)
 
 if(NOT MSVC)
-	target_compile_options(${GAME_TARGET} PRIVATE
+	target_compile_options(${GAME_TARGET_OBJ} PRIVATE
 		-fexceptions
 		-Wall
 		-Wextra
@@ -150,7 +174,7 @@ if(NOT MSVC)
 	# Sanitizers in debug mode (Linux only)
 	# When using a debugger, you should export LSAN_OPTIONS=detect_leaks=0
 	if(SANITIZE)
-		target_compile_options(${GAME_TARGET} PRIVATE
+		target_compile_options(${GAME_TARGET_OBJ} PRIVATE
 			-fsanitize=alignment
 			-fsanitize=address
 			-fsanitize=leak
@@ -159,13 +183,13 @@ if(NOT MSVC)
 		)
 	endif()
 else()
-	target_compile_definitions(${GAME_TARGET} PRIVATE
+	target_compile_definitions(${GAME_TARGET_OBJ} PRIVATE
 		WIN32_LEAN_AND_MEAN
 		NOGDI				# don't clash with Mac function names
 		NOUSER				# don't clash with Mac function names
 	)
 
-	target_compile_options(${GAME_TARGET} PRIVATE
+	target_compile_options(${GAME_TARGET_OBJ} PRIVATE
 		/EHs	# synchronous exceptions; also, extern "C" functions may throw exceptions
 		/W4
 		/wd4068 # ignore unrecognized pragmas
@@ -180,11 +204,11 @@ else()
 	)
 
 	# Let executable be debugged with PDB, even in Release builds
-	target_link_options(${GAME_TARGET} PRIVATE /DEBUG)
+	target_link_options(${GAME_TARGET_OBJ} PRIVATE /DEBUG)
 
 	# Enable console for debug builds
-	set_target_properties(${GAME_TARGET} PROPERTIES LINK_FLAGS_DEBUG "/SUBSYSTEM:CONSOLE")
-	set_target_properties(${GAME_TARGET} PROPERTIES COMPILE_DEFINITIONS_DEBUG "_CONSOLE")
+	set_target_properties(${GAME_TARGET_OBJ} PROPERTIES LINK_FLAGS_DEBUG "/SUBSYSTEM:CONSOLE")
+	set_target_properties(${GAME_TARGET_OBJ} PROPERTIES COMPILE_DEFINITIONS_DEBUG "_CONSOLE")
 endif()
 
 #------------------------------------------------------------------------------
@@ -193,34 +217,39 @@ endif()
 
 # Link sanitizers first
 if(SANITIZE)
-	target_link_libraries(${GAME_TARGET} PRIVATE asan ubsan)
+	target_link_libraries(${GAME_TARGET_OBJ} PRIVATE asan ubsan)
 endif()
 
 # Explicitly link math lib on Linux
-if(NOT APPLE AND NOT WIN32)
-	target_link_libraries(${GAME_TARGET} PRIVATE m)
+if(NOT APPLE AND NOT WIN32 AND NOT ANDROID)
+	target_link_libraries(${GAME_TARGET_OBJ} PRIVATE m)
 endif()
 
 # Link SDL
 if(NOT SDL_STATIC)
-	target_link_libraries(${GAME_TARGET} PRIVATE SDL3::SDL3)
+	target_link_libraries(${GAME_TARGET_OBJ} PRIVATE SDL3::SDL3)
 else()
-	target_link_libraries(${GAME_TARGET} PRIVATE SDL3::SDL3-static)
+	target_link_libraries(${GAME_TARGET_OBJ} PRIVATE SDL3::SDL3-static)
 endif()
 
 # Link core dependencies
-target_link_libraries(${GAME_TARGET} PRIVATE Pomme OpenGL::GL)
+if(ANDROID)
+	target_link_libraries(${GAME_TARGET_OBJ} PRIVATE Pomme GLESv3 log android)
+else()
+	target_link_libraries(${GAME_TARGET_OBJ} PRIVATE Pomme OpenGL::GL)
+endif()
 
 # Add required frameworks for KillMacMouseAcceleration
 if(APPLE)
-	target_link_libraries(${GAME_TARGET} PRIVATE "-framework Foundation" "-framework IOKit")
+	target_link_libraries(${GAME_TARGET_OBJ} PRIVATE "-framework Foundation" "-framework IOKit")
 endif()
 
 #------------------------------------------------------------------------------
 # PLATFORM-SPECIFIC PROPERTIES
 #------------------------------------------------------------------------------
 
-set_target_properties(${GAME_TARGET} PROPERTIES
+if(NOT ANDROID)
+set_target_properties(${GAME_TARGET_OBJ} PROPERTIES
 	#--------------------------------------------------------------------------
 	# MSVC/WIN32
 	#--------------------------------------------------------------------------
@@ -271,24 +300,26 @@ set_target_properties(${GAME_TARGET} PROPERTIES
 	XCODE_ATTRIBUTE_CODE_SIGN_INJECT_BASE_ENTITLEMENTS "NO"
 	XCODE_ATTRIBUTE_OTHER_CODE_SIGN_FLAGS			"--options=runtime --timestamp"
 )
+endif() # NOT ANDROID
 
 #------------------------------------------------------------------------------
 # POST-BUILD (COPY ASSETS, ETC.)
 #------------------------------------------------------------------------------
 
+if(NOT ANDROID)
 if(APPLE)
-	set(GAME_DATA_TARGET_LOCATION "$<TARGET_FILE_DIR:${GAME_TARGET}>/../Resources")
+	set(GAME_DATA_TARGET_LOCATION "$<TARGET_FILE_DIR:${GAME_TARGET_OBJ}>/../Resources")
 else()
-	set(GAME_DATA_TARGET_LOCATION "$<TARGET_FILE_DIR:${GAME_TARGET}>/Data")
+	set(GAME_DATA_TARGET_LOCATION "$<TARGET_FILE_DIR:${GAME_TARGET_OBJ}>/Data")
 endif()
 
-add_custom_command(TARGET ${GAME_TARGET} POST_BUILD
+add_custom_command(TARGET ${GAME_TARGET_OBJ} POST_BUILD
 	COMMAND ${CMAKE_COMMAND} -E copy_directory "${GAME_DATADIR}" "${GAME_DATA_TARGET_LOCATION}")
 
 if(APPLE)
 	set(INFO_PLIST "${GAME_DATA_TARGET_LOCATION}/../Info.plist")
 
-	add_custom_command(TARGET ${GAME_TARGET} POST_BUILD
+	add_custom_command(TARGET ${GAME_TARGET_OBJ} POST_BUILD
 		# Copy extra resources to app bundle
 		COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/packaging/mainmenu.nib ${GAME_DATA_TARGET_LOCATION}/mainmenu.nib
 
@@ -302,8 +333,8 @@ endif()
 # Windows-specific libraries
 if(WIN32)
 	# Copy SDL3 DLLs to output folder on Windows for convenience
-	add_custom_command(TARGET ${GAME_TARGET} POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_RUNTIME_DLLS:${GAME_TARGET}> $<TARGET_FILE_DIR:${GAME_TARGET}>)
+	add_custom_command(TARGET ${GAME_TARGET_OBJ} POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_RUNTIME_DLLS:${GAME_TARGET_OBJ}> $<TARGET_FILE_DIR:${GAME_TARGET_OBJ}>)
 
 	# When installing (cmake --install), copy Visual Studio redistributable DLLs to install location
 	include(InstallRequiredSystemLibraries)
@@ -311,3 +342,4 @@ endif()
 
 # Copy documentation to output folder
 configure_file(${CMAKE_SOURCE_DIR}/packaging/ReadMe.txt.in ${CMAKE_CURRENT_BINARY_DIR}/ReadMe.txt)
+endif() # NOT ANDROID

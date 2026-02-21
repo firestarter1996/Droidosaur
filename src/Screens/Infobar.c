@@ -772,7 +772,7 @@ Boolean					forceUpdate = false;
 				/**********************/
 
 		Render_BindTexture(gGPSObj->MeshList[0]->glTextureName);
-		glTexSubImage2D(
+		Render_TexSubImage2D(
 				GL_TEXTURE_2D,
 				0,
 				0,

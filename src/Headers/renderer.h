@@ -77,6 +77,19 @@ GLuint Render_LoadTexture(
 		RendererTextureFlags flags
 );
 
+// Wrapper around glTexSubImage2D that handles BGRA→RGBA conversion on Android.
+void Render_TexSubImage2D(
+		GLenum target,
+		GLint level,
+		GLint xoffset,
+		GLint yoffset,
+		GLsizei width,
+		GLsizei height,
+		GLenum bufferFormat,
+		GLenum bufferType,
+		const GLvoid* pixels
+);
+
 // Uploads all textures from a 3DMF file to the GPU.
 // Requires an OpenGL context to be active.
 void Render_Load3DMFTextures(TQ3MetaFile* metaFile, GLuint* outTextureNames);

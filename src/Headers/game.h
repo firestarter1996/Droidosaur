@@ -1,7 +1,11 @@
 #pragma once
 
 #include <SDL3/SDL.h>
+#ifdef __ANDROID__
+#include "gles_compat.h"
+#else
 #include <SDL3/SDL_opengl.h>
+#endif
 #include <Pomme.h>
 #include <QD3D.h>
 #include <QD3DMath.h>

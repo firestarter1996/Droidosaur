@@ -984,7 +984,7 @@ static void UpdateSuperTileTexture(SuperTileMemoryType* superTilePtr)
 			/* RECREATE TEXTURE */
 
 	Render_BindTexture(superTilePtr->glTextureName);
-	glTexSubImage2D(
+	Render_TexSubImage2D(
 			GL_TEXTURE_2D,
 			0,
 			0,
