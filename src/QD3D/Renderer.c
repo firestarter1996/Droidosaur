@@ -366,19 +366,21 @@ GLuint Render_LoadTexture(
 		{
 			if (bufferType == GL_UNSIGNED_INT_8_8_8_8 || bufferType == 0x8035)
 			{
-				// Input: BGRA packed as 32-bit big-endian (B=byte0, G=byte1, R=byte2, A=byte3)
+				// Pomme ARGB layout: byte[0]=A, byte[1]=R, byte[2]=G, byte[3]=B.
+				// Convert to GL_RGBA layout: byte[0]=R, byte[1]=G, byte[2]=B, byte[3]=A.
 				const uint8_t *src = (const uint8_t *)pixels;
 				for (int i = 0; i < numPixels; i++)
 				{
-					converted[i*4+0] = src[i*4+2]; // R <- B slot (B is byte0, stored at R position in little-endian)
-					converted[i*4+1] = src[i*4+1]; // G
-					converted[i*4+2] = src[i*4+0]; // B <- R slot
-					converted[i*4+3] = src[i*4+3]; // A
+					converted[i*4+0] = src[i*4+1]; // R
+					converted[i*4+1] = src[i*4+2]; // G
+					converted[i*4+2] = src[i*4+3]; // B
+					converted[i*4+3] = src[i*4+0]; // A
 				}
 			}
 			else if (bufferType == GL_UNSIGNED_INT_8_8_8_8_REV || bufferType == 0x8367)
 			{
-				// Input: BGRA packed as 32-bit little-endian (A=byte0, R=byte1, G=byte2, B=byte3)
+				// Pomme ARGB layout on BE: byte[0]=A, byte[1]=R, byte[2]=G, byte[3]=B.
+				// Convert to GL_RGBA layout: byte[0]=R, byte[1]=G, byte[2]=B, byte[3]=A.
 				const uint8_t *src = (const uint8_t *)pixels;
 				for (int i = 0; i < numPixels; i++)
 				{
@@ -483,35 +485,38 @@ void Render_TexSubImage2D(
 			}
 			else if (bufferType == GL_UNSIGNED_INT_8_8_8_8 || bufferType == 0x8035)
 			{
+				// Pomme ARGB layout: byte[0]=A, byte[1]=R, byte[2]=G, byte[3]=B.
 				const uint8_t *src = (const uint8_t *)pixels;
 				for (int i = 0; i < numPixels; i++)
 				{
-					cvt[i*4+0] = src[i*4+2];
-					cvt[i*4+1] = src[i*4+1];
-					cvt[i*4+2] = src[i*4+0];
-					cvt[i*4+3] = src[i*4+3];
+					cvt[i*4+0] = src[i*4+1]; // R
+					cvt[i*4+1] = src[i*4+2]; // G
+					cvt[i*4+2] = src[i*4+3]; // B
+					cvt[i*4+3] = src[i*4+0]; // A
 				}
 			}
 			else if (bufferType == GL_UNSIGNED_INT_8_8_8_8_REV || bufferType == 0x8367)
 			{
+				// Pomme ARGB layout on BE: byte[0]=A, byte[1]=R, byte[2]=G, byte[3]=B.
 				const uint8_t *src = (const uint8_t *)pixels;
 				for (int i = 0; i < numPixels; i++)
 				{
-					cvt[i*4+0] = src[i*4+1];
-					cvt[i*4+1] = src[i*4+2];
-					cvt[i*4+2] = src[i*4+3];
-					cvt[i*4+3] = src[i*4+0];
+					cvt[i*4+0] = src[i*4+1]; // R
+					cvt[i*4+1] = src[i*4+2]; // G
+					cvt[i*4+2] = src[i*4+3]; // B
+					cvt[i*4+3] = src[i*4+0]; // A
 				}
 			}
 			else
 			{
+				// Generic fallback: swap R and B (BGRA → RGBA byte swap)
 				const uint8_t *src = (const uint8_t *)pixels;
 				for (int i = 0; i < numPixels; i++)
 				{
-					cvt[i*4+0] = src[i*4+2];
-					cvt[i*4+1] = src[i*4+1];
-					cvt[i*4+2] = src[i*4+0];
-					cvt[i*4+3] = src[i*4+3];
+					cvt[i*4+0] = src[i*4+1]; // R
+					cvt[i*4+1] = src[i*4+2]; // G
+					cvt[i*4+2] = src[i*4+3]; // B
+					cvt[i*4+3] = src[i*4+0]; // A
 				}
 			}
 			glTexSubImage2D(target, level, xoffset, yoffset, width, height,
@@ -1154,24 +1159,23 @@ void Render_DrawBackdrop(bool keepBackdropAspectRatio)
 				for (int col = 0; col < dmgW; col++)
 				{
 					uint32_t px = srcRow[col];
-#if !(__BIG_ENDIAN__)
-					// GL_UNSIGNED_INT_8_8_8_8 little-endian: byte order = B G R A in memory
-					uint8_t b = (uint8_t)( px        & 0xFF);
-					uint8_t g = (uint8_t)((px >>  8) & 0xFF);
-					uint8_t r = (uint8_t)((px >> 16) & 0xFF);
-					uint8_t a = (uint8_t)((px >> 24) & 0xFF);
-#else
-					// GL_UNSIGNED_INT_8_8_8_8_REV big-endian: byte order = A R G B in memory
-					uint8_t a = (uint8_t)( px        & 0xFF);
-					uint8_t b = (uint8_t)((px >>  8) & 0xFF);
-					uint8_t g = (uint8_t)((px >> 16) & 0xFF);
-					uint8_t r = (uint8_t)((px >> 24) & 0xFF);
-#endif
+					// Pomme stores pixels as ARGB (byte[0]=A, byte[1]=R, byte[2]=G, byte[3]=B).
+					// On LE, reading as uint32: bits[0..7]=A, bits[8..15]=R, bits[16..23]=G, bits[24..31]=B.
+					// Convert to GL_RGBA / GL_UNSIGNED_BYTE (byte[0]=R, [1]=G, [2]=B, [3]=A).
 					int idx = (row * dmgW + col) * 4;
-					cvt[idx+0] = r;
-					cvt[idx+1] = g;
-					cvt[idx+2] = b;
-					cvt[idx+3] = a;
+#if !(__BIG_ENDIAN__)
+					cvt[idx+0] = (uint8_t)((px >>  8) & 0xFF); // R
+					cvt[idx+1] = (uint8_t)((px >> 16) & 0xFF); // G
+					cvt[idx+2] = (uint8_t)((px >> 24) & 0xFF); // B
+					cvt[idx+3] = (uint8_t)( px        & 0xFF); // A
+#else
+					// On BE, uint32 bytes are: [A, R, G, B] in MSB-first order.
+					// bits[24..31]=A, bits[16..23]=R, bits[8..15]=G, bits[0..7]=B
+					cvt[idx+0] = (uint8_t)((px >> 16) & 0xFF); // R
+					cvt[idx+1] = (uint8_t)((px >>  8) & 0xFF); // G
+					cvt[idx+2] = (uint8_t)( px        & 0xFF); // B
+					cvt[idx+3] = (uint8_t)((px >> 24) & 0xFF); // A
+#endif
 				}
 				srcRow += gBackdropWidth;
 			}
