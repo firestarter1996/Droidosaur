@@ -91,12 +91,46 @@ static void Mat4_Multiply(const Mat4 *a, const Mat4 *b, Mat4 *out)
     *out = tmp;
 }
 
-// Normal matrix = upper-left 3x3 of modelview (assume uniform scale)
+// Normal matrix = inverse transpose of upper-left 3x3 of modelview.
+// This handles non-uniform scales (e.g., water undulation applies Scale.y
+// only, making the Y axis differently scaled from X and Z).
 static void Mat4_NormalMatrix(const Mat4 *mv, float out[9])
 {
-    out[0] = mv->m[0]; out[1] = mv->m[1]; out[2] = mv->m[2];
-    out[3] = mv->m[4]; out[4] = mv->m[5]; out[5] = mv->m[6];
-    out[6] = mv->m[8]; out[7] = mv->m[9]; out[8] = mv->m[10];
+    // Extract upper-left 3x3 (column-major: columns are mv->m[0-2], m[4-6], m[8-10])
+    float a = mv->m[0], b = mv->m[4], c = mv->m[8];
+    float d = mv->m[1], e = mv->m[5], f = mv->m[9];
+    float g = mv->m[2], h = mv->m[6], k = mv->m[10];
+
+    // Cofactors (for computing inverse transpose)
+    float A =  e*k - f*h;
+    float B = -(d*k - f*g);
+    float C =  d*h - e*g;
+    float D = -(b*k - c*h);
+    float E =  a*k - c*g;
+    float F = -(a*h - b*g);
+    float G =  b*f - c*e;
+    float H = -(a*f - c*d);
+    float K =  a*e - b*d;
+
+    float det = a*A + b*B + c*C;
+
+    if (det > -1e-6f && det < 1e-6f)  // degenerate (e.g. water at Scale.y==0)
+    {
+        // Degenerate (zero-volume) matrix: return identity to avoid NaN/inf
+        out[0]=1; out[1]=0; out[2]=0;
+        out[3]=0; out[4]=1; out[5]=0;
+        out[6]=0; out[7]=0; out[8]=1;
+        return;
+    }
+
+    float inv = 1.0f / det;
+    // A^{-T} = cofactor matrix / det.  In GLSL mat3 column-major layout,
+    // column j holds elements (row0[j], row1[j], row2[j]) of A^{-T}.
+    // A^{-T} rows: (A,B,C)/det, (D,E,F)/det, (G,H,K)/det
+    //  → column 0 = (A,D,G)/det, column 1 = (B,E,H)/det, column 2 = (C,F,K)/det
+    out[0] = A*inv; out[1] = D*inv; out[2] = G*inv;  // column 0
+    out[3] = B*inv; out[4] = E*inv; out[5] = H*inv;  // column 1
+    out[6] = C*inv; out[7] = F*inv; out[8] = K*inv;  // column 2
 }
 
 // -------------------------------------------------------------------------
@@ -756,8 +790,20 @@ void bridge_Lightfv(GLenum light, GLenum pname, const GLfloat *params)
         case 0x1202: // GL_SPECULAR
             memcpy(gLights[i].specular, params, 4 * sizeof(float)); break;
         case 0x1203: // GL_POSITION
-            memcpy(gLights[i].position, params, 4 * sizeof(float));
+        {
+            // Classic OpenGL transforms the light position/direction by the
+            // current modelview matrix at the time of the glLightfv call,
+            // storing the result in eye space.  The caller sets lights with
+            // the camera matrix loaded, so world-space directions become
+            // eye-space directions here.
+            const float *mv = MatStack_Top(&gMatMV)->m;
+            float px = params[0], py = params[1], pz = params[2], pw = params[3];
+            gLights[i].position[0] = mv[0]*px + mv[4]*py + mv[8]*pz  + mv[12]*pw;
+            gLights[i].position[1] = mv[1]*px + mv[5]*py + mv[9]*pz  + mv[13]*pw;
+            gLights[i].position[2] = mv[2]*px + mv[6]*py + mv[10]*pz + mv[14]*pw;
+            gLights[i].position[3] = pw;
             break;
+        }
         default:
             break;
     }

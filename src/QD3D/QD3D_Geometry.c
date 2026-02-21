@@ -446,8 +446,9 @@ void QD3D_ScrollUVs(int numMeshes, TQ3TriMeshData** meshList, float rawDeltaU, f
 			float u = mesh->vertexUVs[j].u + rawDeltaU;
 			float v = mesh->vertexUVs[j].v - rawDeltaV;
 			// Wrap large UV values to prevent floating-point precision loss on
-			// long-running sessions.  floor() applied consistently to all vertices
-			// preserves relative UV offsets between them, so no visible seam.
+			// long-running sessions.  Threshold 128 gives ~2 minutes of headroom
+			// at typical water scroll rates.  floor() applied consistently to all
+			// vertices preserves relative UV offsets between them (no seam).
 			if (u > 128.0f || u < -128.0f)
 				u -= floorf(u);
 			if (v > 128.0f || v < -128.0f)
