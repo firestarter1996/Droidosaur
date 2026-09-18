@@ -1,0 +1,60 @@
++ cd /home/Justice/droidosaur
++ sudo apt-get install -y -q openjdk-21-jdk-headless unzip
++ echo JDK_OK
+JDK_OK
++ git submodule update --init --recursive --depth 1
+Submodule 'extern/Pomme' (https://github.com/jorio/Pomme) registered for path 'extern/Pomme'
+Cloning into '/home/Justice/droidosaur/extern/Pomme'...
+Submodule path 'extern/Pomme': checked out '69ee58bd06d4e9ab76b472c15ca5b6e06672be73'
++ echo SUBMODULES_OK
+SUBMODULES_OK
++ git clone -q --depth 1 -b release-3.2.8 https://github.com/libsdl-org/SDL.git extern/SDL
+Note: switching to 'f6864924f76e1a0b4abaefc76ae2ed22b1a8916e'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
++ echo SDL_OK
+SDL_OK
++ mkdir -p android/app/src/main/java/org/libsdl/app
++ cp extern/SDL/android-project/app/src/main/java/org/libsdl/app/HIDDeviceBLESteamController.java extern/SDL/android-project/app/src/main/java/org/libsdl/app/HIDDevice.java extern/SDL/android-project/app/src/main/java/org/libsdl/app/HIDDeviceManager.java extern/SDL/android-project/app/src/main/java/org/libsdl/app/HIDDeviceUSB.java extern/SDL/android-project/app/src/main/java/org/libsdl/app/SDLActivity.java extern/SDL/android-project/app/src/main/java/org/libsdl/app/SDLAudioManager.java extern/SDL/android-project/app/src/main/java/org/libsdl/app/SDLControllerManager.java extern/SDL/android-project/app/src/main/java/org/libsdl/app/SDLDummyEdit.java extern/SDL/android-project/app/src/main/java/org/libsdl/app/SDLInputConnection.java extern/SDL/android-project/app/src/main/java/org/libsdl/app/SDL.java extern/SDL/android-project/app/src/main/java/org/libsdl/app/SDLSurface.java android/app/src/main/java/org/libsdl/app/
++ echo BRIDGE_OK
+BRIDGE_OK
++ SDK=/home/Justice/android-sdk
++ mkdir -p /home/Justice/android-sdk/cmdline-tools
++ cd /home/Justice/android-sdk
++ '[' -d cmdline-tools/latest ']'
++ curl -sSL -o ct.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
++ unzip -q ct.zip -d cmdline-tools
++ mv cmdline-tools/cmdline-tools cmdline-tools/latest
++ rm ct.zip
++ export ANDROID_HOME=/home/Justice/android-sdk JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
++ ANDROID_HOME=/home/Justice/android-sdk
++ JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
++ yes
++ /home/Justice/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
++ /home/Justice/android-sdk/cmdline-tools/latest/bin/sdkmanager platform-tools 'platforms;android-35' 'build-tools;35.0.0' 'cmake;3.22.1' 'ndk;27.2.12479018'
++ echo SDK_OK
+SDK_OK
++ ls /home/Justice/android-sdk
+build-tools
+cmake
+cmdline-tools
+licenses
+ndk
+platforms
+platform-tools
++ echo SETUP_DONE
+SETUP_DONE

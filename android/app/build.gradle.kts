@@ -11,11 +11,12 @@ android {
         applicationId = "io.jor.nanosaur"
         minSdk = 24        // Android 7.0 – supports GLES 3.0
         targetSdk = 35
-        versionCode = 1
+        // CI sets DROIDOSAUR_VERSION_CODE = 100 + run number so every release is an upgrade for Obtainium
+        versionCode = (System.getenv("DROIDOSAUR_VERSION_CODE") ?: "1").toInt()
         versionName = "1.4.5"
 
         ndk {
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
+            abiFilters += listOf("arm64-v8a")
         }
 
         externalNativeBuild {
