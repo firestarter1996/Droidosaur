@@ -1,0 +1,71 @@
+name: Droidosaur release (arm64 APK)
+
+# Builds the Nanosaur Android port for the Pixel 8 Pro, signs it with the Droidosaur release key
+# (repo secrets DROIDOSAUR_KEYSTORE_B64 / DROIDOSAUR_KEYSTORE_PASS) and publishes it as a GitHub
+# Release so Obtainium can track updates. Runs on every push to main, on demand, and after the
+# weekly upstream sync.
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-sign-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+
+      - name: Clone SDL3 (pinned)
+        run: git clone --depth 1 -b release-3.2.8 https://github.com/libsdl-org/SDL.git extern/SDL
+
+      - name: Copy SDL Java bridge
+        run: |
+          mkdir -p android/app/src/main/java/org/libsdl/app
+          cp extern/SDL/android-project/app/src/main/java/org/libsdl/app/*.java android/app/src/main/java/org/libsdl/app/
+
+      - uses: android-actions/setup-android@v3
+      - name: SDK components
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "cmake;3.22.1" "ndk;27.2.12479018" "build-tools;35.0.0" >/dev/null
+
+      - name: Build release APK (unsigned)
+        working-directory: android
+        env:
+          DROIDOSAUR_VERSION_CODE: ${{ github.run_number }}
+        run: DROIDOSAUR_VERSION_CODE=$((100 + DROIDOSAUR_VERSION_CODE)) ./gradlew assembleRelease --stacktrace --no-daemon
+
+      - name: Sign
+        env:
+          KS_B64: ${{ secrets.DROIDOSAUR_KEYSTORE_B64 }}
+          KS_PASS: ${{ secrets.DROIDOSAUR_KEYSTORE_PASS }}
+        run: |
+          echo "$KS_B64" | base64 -d > /tmp/droidosaur.jks
+          BT=$ANDROID_HOME/build-tools/35.0.0
+          VER=$(grep -oP 'versionName = "\K[^"]+' android/app/build.gradle.kts)
+          echo "VER=$VER" >> $GITHUB_ENV
+          $BT/zipalign -f -p 4 android/app/build/outputs/apk/release/app-release-unsigned.apk /tmp/aligned.apk
+          $BT/apksigner sign --ks /tmp/droidosaur.jks --ks-key-alias droidosaur --ks-pass "pass:$KS_PASS" --key-pass "pass:$KS_PASS" --out "Droidosaur-$VER-arm64.apk" /tmp/aligned.apk
+          $BT/apksigner verify --print-certs "Droidosaur-$VER-arm64.apk" | grep SHA-256
+          rm -f /tmp/droidosaur.jks
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VER }}-build${{ github.run_number }}
+          name: Droidosaur ${{ env.VER }} (build ${{ github.run_number }})
+          body: |
+            Nanosaur for Android (arm64-v8a), built from `${{ github.sha }}`.
+            Signed with the Droidosaur release key (SHA-256 5e5de121b0c6d0088cc3ff71c9fc9577aae60f0b3d125216771486c651f882dd).
+          files: Droidosaur-*.apk

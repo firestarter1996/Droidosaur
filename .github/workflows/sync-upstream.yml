@@ -1,0 +1,31 @@
+name: Sync upstream Android port
+
+# Weekly: merge LachlanBWWright/Nanosaur-android's copilot/update-android-port branch (the source of
+# this port) into main. A successful merge push triggers the release workflow.
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Merge upstream branch
+        run: |
+          git config user.name "droidosaur-bot"
+          git config user.email "droidosaur-bot@users.noreply.github.com"
+          git remote add upstream https://github.com/LachlanBWWright/Nanosaur-android.git
+          git fetch upstream copilot/update-android-port
+          if git merge --no-edit upstream/copilot/update-android-port; then
+            git push origin HEAD:main
+          else
+            echo "::warning::upstream merge conflict — resolve manually"; git merge --abort; exit 0
+          fi

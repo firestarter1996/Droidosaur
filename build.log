@@ -1,0 +1,99 @@
+Downloading https://services.gradle.org/distributions/gradle-8.9-bin.zip
+............10%.............20%.............30%.............40%.............50%.............60%.............70%.............80%.............90%.............100%
+
+Welcome to Gradle 8.9!
+
+Here are the highlights of this release:
+ - Enhanced Error and Warning Messages
+ - IDE Integration Improvements
+ - Daemon JVM Information
+
+For more details see https://docs.gradle.org/8.9/release-notes.html
+
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.9/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+Checking the license for package Android SDK Build-Tools 34 in /home/Justice/android-sdk/licenses
+License for package Android SDK Build-Tools 34 accepted.
+Preparing "Install Android SDK Build-Tools 34 v.34.0.0".
+"Install Android SDK Build-Tools 34 v.34.0.0" ready.
+Installing Android SDK Build-Tools 34 in /home/Justice/android-sdk/build-tools/34.0.0
+"Install Android SDK Build-Tools 34 v.34.0.0" complete.
+"Install Android SDK Build-Tools 34 v.34.0.0" finished.
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:generateDebugResValues
+> Task :app:checkDebugAarMetadata
+> Task :app:javaPreCompileDebug
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:mergeDebugResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:parseDebugLocalResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:mergeDebugShaders
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets
+> Task :app:processDebugManifestForPackage
+> Task :app:compressDebugAssets
+> Task :app:desugarDebugFileDependencies
+> Task :app:processDebugJavaRes NO-SOURCE
+> Task :app:checkDebugDuplicateClasses
+> Task :app:mergeDebugJavaResource
+> Task :app:processDebugResources
+
+> Task :app:configureCMakeDebug[arm64-v8a]
+C/C++: Sanitizers disabled (pass -DSANITIZE=1 to enable)
+C/C++: Couldn't find pre-built SDL3 package in: 
+C/C++: Building SDL3 from source: /home/Justice/droidosaur/extern/SDL
+
+> Task :app:compileDebugJavaWithJavac
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :app:dexBuilderDebug
+> Task :app:mergeExtDexDebug
+> Task :app:mergeDebugGlobalSynthetics
+> Task :app:mergeLibDexDebug
+> Task :app:mergeProjectDexDebug
+
+> Task :app:buildCMakeDebug[arm64-v8a]
+C/C++: ninja: Entering directory `/home/Justice/droidosaur/android/app/.cxx/Debug/4f604v2m/arm64-v8a'
+C/C++: /home/Justice/droidosaur/src/QD3D/Renderer.c:107:25: warning: unused variable 'kFullscreenQuadPointsNDC' [-Wunused-const-variable]
+C/C++:   107 | static const TQ3Point2D kFullscreenQuadPointsNDC[4] =
+C/C++:       |                         ^~~~~~~~~~~~~~~~~~~~~~~~
+C/C++: 1 warning generated.
+C/C++: /home/Justice/droidosaur/src/Screens/SettingsScreen.c:581:8: warning: unused variable 'gamma' [-Wunused-variable]
+C/C++:   581 |         float gamma = 0;
+C/C++:       |               ^~~~~
+C/C++: 1 warning generated.
+C/C++: /home/Justice/droidosaur/src/System/Window.c:21:28: warning: unused parameter 'fadeIn' [-Wunused-parameter]
+C/C++:    21 | void MakeFadeEvent(Boolean      fadeIn)
+C/C++:       |                                 ^
+C/C++: /home/Justice/droidosaur/src/System/Window.c:50:13: warning: unused function 'MoveFadeEvent' [-Wunused-function]
+C/C++:    50 | static void MoveFadeEvent(ObjNode *theNode)
+C/C++:       |             ^~~~~~~~~~~~~
+C/C++: 2 warnings generated.
+
+> Task :app:mergeDebugJniLibFolders
+> Task :app:mergeDebugNativeLibs
+> Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+> Task :app:writeDebugSigningConfigVersions
+> Task :app:stripDebugDebugSymbols
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect
+> Task :app:assembleDebug
+
+BUILD SUCCESSFUL in 1m 52s
+36 actionable tasks: 36 executed
+BUILD_EXIT=0
+total 17836
+drwxr-xr-x 2 Justice Justice     4096 Sep 18 07:42 .
+drwxr-xr-x 3 Justice Justice     4096 Sep 18 07:42 ..
+-rw-r--r-- 1 Justice Justice 18251563 Sep 18 07:42 app-debug.apk
+-rw-r--r-- 1 Justice Justice      399 Sep 18 07:42 output-metadata.json
