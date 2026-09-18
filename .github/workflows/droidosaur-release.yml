@@ -34,11 +34,12 @@ jobs:
           mkdir -p android/app/src/main/java/org/libsdl/app
           cp extern/SDL/android-project/app/src/main/java/org/libsdl/app/*.java android/app/src/main/java/org/libsdl/app/
 
-      - uses: android-actions/setup-android@v3
-      - name: SDK components
+      - name: SDK components (runner's own SDK; setup-android@v3 exits 1 on current images)
         run: |
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "cmake;3.22.1" "ndk;27.2.12479018" "build-tools;35.0.0" >/dev/null
+          SDKM=$(ls -d $ANDROID_HOME/cmdline-tools/*/bin/sdkmanager | tail -1)
+          yes | $SDKM --licenses >/dev/null 2>&1 || true
+          $SDKM --install "platforms;android-35" "build-tools;35.0.0" "cmake;3.22.1" "ndk;27.2.12479018" >/dev/null
+          echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
       - name: Build release APK (unsigned)
         working-directory: android
