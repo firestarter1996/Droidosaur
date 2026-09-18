@@ -7,6 +7,13 @@ name: Droidosaur release (arm64 APK)
 on:
   push:
     branches: ["main"]
+    # Owner 2026-09-18: only CODE changes make a release. Docs/README/CI-config edits are ignored.
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "packaging/**"
+      - ".github/workflows/sync-upstream.yml"
+      - "LICENSE*"
   workflow_dispatch:
 
 permissions:
