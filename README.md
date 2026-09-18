@@ -1,6 +1,6 @@
 # Droidosaur 🦖📱
 
-**Pangea Software's Nanosaur, running on a Pixel 8 Pro.**
+**Pangea Software's Nanosaur, running on Android.**
 
 This is a build-and-release wrapper around the Android port of [jorio/Nanosaur](https://github.com/jorio/Nanosaur)
 that lives in [LachlanBWWright/Nanosaur-android](https://github.com/LachlanBWWright/Nanosaur-android)
