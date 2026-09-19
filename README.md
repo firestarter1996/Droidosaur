@@ -23,3 +23,7 @@ zipalign + apksigner, release. `sync-upstream.yml` merges the upstream port bran
 
 Nanosaur © Pangea Software (Brian Greenstone); modern port by Iliyas Jorio; Android port by Lachlan Wright's
 Copilot branch. See [LICENSE.md](LICENSE.md). This repo only adds packaging.
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=heyitsj0n/Droidosaur&type=Date)](https://star-history.com/#heyitsj0n/Droidosaur&Date)
