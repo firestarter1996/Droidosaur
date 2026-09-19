@@ -12,6 +12,40 @@
 
 #define LOGI(...)  __android_log_print(ANDROID_LOG_INFO, "Nanosaur", __VA_ARGS__)
 
+#include <jni.h>
+
+// Haptics (owner 2026-09-19): a short tick when a button goes down and whenever the D-pad direction
+// changes, through NanosaurActivity.vibrate(ms, amplitude) over JNI (SDL3 has no phone-vibrator API).
+#define HAPTIC_BTN_MS       22
+#define HAPTIC_BTN_AMP      170
+#define HAPTIC_DPAD_MS      12
+#define HAPTIC_DPAD_AMP     110
+
+static jclass    gActivityClass = NULL;
+static jmethodID gVibrateMethod = NULL;
+
+static void Haptic(int ms, int amp)
+{
+    JNIEnv *env = (JNIEnv *)SDL_GetAndroidJNIEnv();
+    if (!env) return;
+    if (!gActivityClass)
+    {
+        jobject activity = (jobject)SDL_GetAndroidActivity();
+        if (!activity) return;
+        jclass local = (*env)->GetObjectClass(env, activity);
+        gActivityClass = (jclass)(*env)->NewGlobalRef(env, local);
+        (*env)->DeleteLocalRef(env, local);
+        (*env)->DeleteLocalRef(env, activity);
+        gVibrateMethod = (*env)->GetStaticMethodID(env, gActivityClass, "vibrate", "(II)V");
+        if (!gVibrateMethod) { (*env)->ExceptionClear(env); LOGI("Haptic: NanosaurActivity.vibrate not found"); }
+    }
+    if (gVibrateMethod)
+    {
+        (*env)->CallStaticVoidMethod(env, gActivityClass, gVibrateMethod, (jint)ms, (jint)amp);
+        if ((*env)->ExceptionCheck(env)) (*env)->ExceptionClear(env);
+    }
+}
+
 // -------------------------------------------------------------------------
 // Layout constants (in normalised window coords 0..1, origin = top-left)
 // -------------------------------------------------------------------------
@@ -162,8 +196,12 @@ static void UpdateJoyAnalog(void)
     float ax = fabsf(dx), ay = fabsf(dy);
     float share = (ax < ay ? ax : ay) / (ax > ay ? ax : ay);   // 0 = pure axis, 1 = exact diagonal
     bool diag = share > DPAD_DIAG_ZONE;
-    gJoyAnalogX = (diag || ax >= ay) ? (dx > 0 ? 1.0f : -1.0f) : 0.0f;
-    gJoyAnalogY = (diag || ay >  ax) ? (dy > 0 ? -1.0f : 1.0f) : 0.0f;   // SDL y is down, game forward is +y
+    float nx = (diag || ax >= ay) ? (dx > 0 ? 1.0f : -1.0f) : 0.0f;
+    float ny = (diag || ay >  ax) ? (dy > 0 ? -1.0f : 1.0f) : 0.0f;   // SDL y is down, game forward is +y
+    if (nx != gJoyAnalogX || ny != gJoyAnalogY)
+        Haptic(HAPTIC_DPAD_MS, HAPTIC_DPAD_AMP);
+    gJoyAnalogX = nx;
+    gJoyAnalogY = ny;
 }
 
 // -------------------------------------------------------------------------
@@ -219,6 +257,7 @@ bool TouchControls_ProcessEvent(const SDL_Event *event)
         {
             gBtnDown[btn]   = true;
             gBtnFinger[btn] = fid;
+            Haptic(HAPTIC_BTN_MS, HAPTIC_BTN_AMP);
             return true;
         }
 
