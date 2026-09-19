@@ -1,5 +1,5 @@
 // TOUCH CONTROLS IMPLEMENTATION FOR ANDROID
-// Virtual joystick + action buttons for Nanosaur.
+// Digital D-pad + action buttons for Nanosaur (Droidosaur).
 
 #ifdef __ANDROID__
 
@@ -16,21 +16,25 @@
 // Layout constants (in normalised window coords 0..1, origin = top-left)
 // -------------------------------------------------------------------------
 
-// Joystick – left side
-#define JOY_CX_NORM     0.12f
-#define JOY_CY_NORM     0.65f
-#define JOY_RADIUS_NORM 0.09f
+// D-pad – left side (owner 2026-09-19: the game was designed for keyboard, so the pad is DIGITAL 8-way,
+// not an analog stick; and everything sits lower so the pad clears the Pixel's camera cutout, which is
+// on the left edge at mid-height in landscape).
+#define JOY_CX_NORM     0.13f
+#define JOY_CY_NORM     0.76f
+#define JOY_RADIUS_NORM 0.085f
+#define DPAD_ARM_W      0.42f   // arm width as a fraction of the pad radius
+#define DPAD_DIAG_ZONE  0.35f   // |dx| and |dy| both above this share -> diagonal (both directions)
 
 // Action buttons – right side (diamond layout: top=Jump, right=Attack, left=Pickup)
 // BTN_SPACING must satisfy: sqrt(spX^2 + spY^2) > 2*r_px for all screen ratios.
 // With BTN_SPACING=0.115 and BTN_RADIUS_NORM=0.043, diagonal gap is ~250px on 16:9.
-#define BTN_CX_NORM     0.82f
-#define BTN_CY_NORM     0.65f
+#define BTN_CX_NORM     0.83f
+#define BTN_CY_NORM     0.70f
 #define BTN_RADIUS_NORM 0.043f
 #define BTN_SPACING     0.115f
 
 // Jetpack buttons – clearly below the action diamond to avoid overlap
-#define JET_BTN_CY_NORM        0.83f    // well below diamond (verified no-overlap for 16:9 and 20:9)
+#define JET_BTN_CY_NORM        0.90f    // well below diamond (verified no-overlap for 16:9 and 20:9)
 #define JET_BTN_X_OFFSET_SCALE 0.55f    // fraction of BTN_SPACING for X separation
 
 // Weapon cycle buttons – top-center area (small)
@@ -144,6 +148,9 @@ static bool HitJoystick(float x, float y)
     return dx*dx + dy*dy <= r*r;
 }
 
+// Digital 8-way D-pad: the finger's offset from the pad centre picks a direction, full strength
+// (-1/0/+1 per axis, exactly like holding the arrow keys). Diagonals when both components are big.
+// The finger may slide anywhere while held - the direction follows it, so you never "fall off".
 static void UpdateJoyAnalog(void)
 {
     if (!gJoyActive) { gJoyAnalogX = gJoyAnalogY = 0; return; }
@@ -151,11 +158,12 @@ static void UpdateJoyAnalog(void)
     float dx = (gJoyTouchX - gJoyCenterX) / JoyRadius();
     float dy = (gJoyTouchY - gJoyCenterY) / JoyRadius();
     float len = sqrtf(dx*dx + dy*dy);
-    if (len > 1.0f) { dx /= len; dy /= len; len = 1.0f; }
     if (len < DEAD_ZONE) { gJoyAnalogX = gJoyAnalogY = 0; return; }
-    float norm = (len - DEAD_ZONE) / (1.0f - DEAD_ZONE);
-    gJoyAnalogX =  dx * norm;
-    gJoyAnalogY = -dy * norm;   // SDL y is down, game forward is +y
+    float ax = fabsf(dx), ay = fabsf(dy);
+    float share = (ax < ay ? ax : ay) / (ax > ay ? ax : ay);   // 0 = pure axis, 1 = exact diagonal
+    bool diag = share > DPAD_DIAG_ZONE;
+    gJoyAnalogX = (diag || ax >= ay) ? (dx > 0 ? 1.0f : -1.0f) : 0.0f;
+    gJoyAnalogY = (diag || ay >  ax) ? (dy > 0 ? -1.0f : 1.0f) : 0.0f;   // SDL y is down, game forward is +y
 }
 
 // -------------------------------------------------------------------------
@@ -547,23 +555,28 @@ void TouchControls_Draw(void)
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    // Draw joystick background
+    // Draw the D-pad: a cross of four arms, the pressed arm(s) lit
     float jcx = NormX(JOY_CX_NORM);
     float jcy = NormY(JOY_CY_NORM);
     float jr  = JoyRadius();
-
-    DrawFilledCircle(jcx, jcy, jr, 32,   0.3f, 0.3f, 0.3f, 0.15f);
-    DrawCircleOutline(jcx, jcy, jr, 32,  0.7f, 0.7f, 0.7f, 0.4f);
-
-    // Draw thumb if active
-    if (gJoyActive)
+    float aw  = jr * DPAD_ARM_W;           // half arm width
+    float ah  = jr;                        // arm length from centre
     {
-        float tx = gJoyTouchX;
-        float ty = gJoyTouchY;
-        float dx = tx - jcx, dy = ty - jcy;
-        float len = sqrtf(dx*dx + dy*dy);
-        if (len > jr) { tx = jcx + dx/len*jr; ty = jcy + dy/len*jr; }
-        DrawFilledCircle(tx, ty, jr * 0.3f, 16,  0.5f, 0.5f, 0.5f, 0.45f);
+        bool up = gJoyAnalogY > 0, down = gJoyAnalogY < 0, left = gJoyAnalogX < 0, right = gJoyAnalogX > 0;
+        float base = 0.18f, lit = 0.55f;
+        // arms (top, bottom, left, right)
+        DrawQuad(jcx - aw, jcy - ah, aw*2, ah - aw,  0.4f, 0.4f, 0.4f, up    ? lit : base);
+        DrawQuad(jcx - aw, jcy + aw, aw*2, ah - aw,  0.4f, 0.4f, 0.4f, down  ? lit : base);
+        DrawQuad(jcx - ah, jcy - aw, ah - aw, aw*2,  0.4f, 0.4f, 0.4f, left  ? lit : base);
+        DrawQuad(jcx + aw, jcy - aw, ah - aw, aw*2,  0.4f, 0.4f, 0.4f, right ? lit : base);
+        DrawQuad(jcx - aw, jcy - aw, aw*2, aw*2,     0.4f, 0.4f, 0.4f, base);            // hub
+        // arrow heads on each arm
+        float s = aw * 0.7f, wa = 0.85f;
+        DrawTriangle(jcx, jcy - ah + s*0.3f, jcx - s, jcy - ah + s*1.6f, jcx + s, jcy - ah + s*1.6f, 1,1,1, wa);
+        DrawTriangle(jcx, jcy + ah - s*0.3f, jcx - s, jcy + ah - s*1.6f, jcx + s, jcy + ah - s*1.6f, 1,1,1, wa);
+        DrawTriangle(jcx - ah + s*0.3f, jcy, jcx - ah + s*1.6f, jcy - s, jcx - ah + s*1.6f, jcy + s, 1,1,1, wa);
+        DrawTriangle(jcx + ah - s*0.3f, jcy, jcx + ah - s*1.6f, jcy - s, jcx + ah - s*1.6f, jcy + s, 1,1,1, wa);
+        DrawCircleOutline(jcx, jcy, jr * 1.15f, 32,  0.7f, 0.7f, 0.7f, 0.25f);   // touch area hint
     }
 
     // Draw action buttons
