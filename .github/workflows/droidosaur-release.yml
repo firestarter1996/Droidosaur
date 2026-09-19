@@ -52,7 +52,7 @@ jobs:
         working-directory: android
         env:
           DROIDOSAUR_VERSION_CODE: ${{ github.run_number }}
-        run: DROIDOSAUR_VERSION_CODE=$((100 + DROIDOSAUR_VERSION_CODE)) ./gradlew assembleRelease --stacktrace --no-daemon
+        run: DROIDOSAUR_VERSION_CODE=$((200 + DROIDOSAUR_VERSION_CODE)) ./gradlew assembleRelease --stacktrace --no-daemon
 
       - name: Sign
         env:
