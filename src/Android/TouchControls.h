@@ -1,5 +1,5 @@
 // TOUCH CONTROLS FOR ANDROID
-// Virtual joystick + action buttons for Nanosaur on Android.
+// Digital 8-way D-pad + action buttons for Nanosaur on Android (Droidosaur, 2026-09-19).
 #pragma once
 
 #ifdef __ANDROID__
@@ -34,7 +34,7 @@ void TouchControls_Shutdown(void);
 // Process an SDL event (call from input handling for touch events)
 bool TouchControls_ProcessEvent(const SDL_Event *event);
 
-// Query joystick analog values (-1..1)
+// Query D-pad direction (-1 / 0 / +1 per axis; digital, like arrow keys)
 float TouchControls_GetJoystickX(void);
 float TouchControls_GetJoystickY(void);
 
