@@ -1,4 +1,4 @@
-# Droidosaur 🦖📱
+# 🦖 Droidosaur 🦖📱
 
 **Pangea Software's Nanosaur, running on Android.** The app installs as "Droidosaur" (package `io.jor.nanosaur`); *Nanosaur* is Pangea's name for the original game, used here only to credit it.
 
