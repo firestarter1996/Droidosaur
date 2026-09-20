@@ -26,4 +26,4 @@ Copilot branch. See [LICENSE.md](LICENSE.md). This repo only adds packaging.
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=heyitsj0n/Droidosaur&type=Date)](https://star-history.com/#heyitsj0n/Droidosaur&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=firestarter1996/Droidosaur&type=Date)](https://star-history.com/#firestarter1996/Droidosaur&Date)
